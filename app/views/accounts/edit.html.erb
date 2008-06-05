@@ -1,0 +1,18 @@
+<% form_for :account, :action => "/accounts", :method => :put do %>
+<h2>Account details</h2>
+
+	<p><%= text_control :name, :label => "Name" %></p>
+	<p><%= text_control :email, :label => "Email" %></p>
+	
+<h2>Change password</h2>
+	
+	<p><%= password_control :password, :label => "Password" %></p>
+	<p><%= password_control :password_confirmation, :label => "Confirm password" %></p>
+
+<h2>Settings</h2>
+    
+	<p><%= text_control :upload_redirect_url, :label => "Upload redirect url", :size => 50 %></p>
+	<p><%= text_control :state_update_url, :label => "State update url", :size => 50 %></p>
+	
+	<%= submit_button "Save changes" %>
+<% end %>

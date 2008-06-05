@@ -1,0 +1,6 @@
+<%= notice %>
+<% form_for :account, :action => "/login", :method => :post do %>
+	<p><%= text_control :login, :label => "Username" %></p>
+	<p><%= password_control :password, :label => "Password" %></p>
+	<%= submit_button "Login" %>
+<% end %>

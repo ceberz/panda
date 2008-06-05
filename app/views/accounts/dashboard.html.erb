@@ -1,0 +1,21 @@
+<div class="dashboard">
+	<% if @account.upload_redirect_url.blank? or @account.state_update_url.blank? %>
+		<div class="notice">
+			<p>You haven't set an upload redirect or state update url. <a href="/accounts">Edit your account details</a> and set these to allow Panda to communicate with your application.</p>
+		</div>
+	<% end %>
+
+	<div id="new_video">
+		<h2><a href="#" onclick="window.open('/videos/new?account_token=<%= @account.token %>', 'panda_upload', 'toolbar=0,scrollbars=0,location=0,statusbar=0,menubar=0,resizable=0,width=395,height=35');return false;">Upload a test video</a></h2>
+	</div>
+
+	<h2>Queued videos</h2>
+
+	<%= partial "videos/list", :videos => @queued_videos %>
+
+	<h2>Recently completed videos</h2>
+
+	<%= partial "videos/list", :videos => @recently_completed_videos %>
+
+	<div class="more_videos"><a href="/videos">View all videos</a></div>
+</div>

@@ -1,0 +1,19 @@
+<table id="videos">
+	<tr>
+		<th>Filename</th>
+		<th>Duration</th>
+		<th>Status</th>
+		<th>Created at</th>
+	</tr>
+<% videos.each do |v| %>
+	<tr>
+		<td>
+			<a href="/videos/<%= v.token %>" class="filename"><%= v.filename || "No filename" %></a>
+			<span class="token"><%= v.token %></span>
+		</td>
+		<td><%= v.duration_str %></td>
+		<td class="<%= v.status %>"><%= v.status %></td>
+		<td><%= v.created_at.strftime("%a, %d %b %Y %H:%M:%S") %></td>
+	</tr>
+<% end %>
+</table>

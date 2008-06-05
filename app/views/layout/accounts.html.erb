@@ -1,0 +1,35 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us" lang="en-us">
+  <head>
+    <title>Panda</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" href="/stylesheets/admin.css" type="text/css" media="screen" charset="utf-8" />
+    <script type="text/javascript" charset="utf-8" src="/javascripts/jquery.js"></script>
+    <script type="text/javascript" charset="utf-8" src="/javascripts/swfobject.js"></script>
+	
+  	<%= catch_content :head %>
+  </head>
+  <body>
+	<div id="container">
+		<div id="header" class="clearfix">
+			<div id="account">
+				<h2><%= @account.name %></h2>
+				<p><a href="/logout">Logout</a></p>
+			</div>
+			
+			<h1><a href="/"><img src="/images/panda_logo.gif" alt="Panda" /></a></h1>
+		
+			<ul id="nav" class="clearfix">
+				<%= nav_item "dashboard", "/" %>
+				<%= nav_item "videos" %>
+				<%= nav_item "account", {:controller => "accounts", :actions => [:index,:edit]} %>
+				<li><a href="http://pandastream.com/docs" target="_blank">Documentation</a></li>
+			</ul>
+		</div>
+	
+		<div id="main">
+		    <%= catch_content :for_layout %>
+		</div>
+	</div>
+  </body>
+</html>

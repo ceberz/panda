@@ -1,0 +1,15 @@
+<% throw_content(:head) do %>
+<script type="text/javascript" charset="utf-8">
+	$(function() {
+		jQuery.nginxUploadProgress({uuid: "<%= params[:id] %>"});
+	});
+</script>
+<% end %>
+
+<div id="pandaloader">
+	<div id="uploading">
+		<div id="progress" class="bar">
+			<div id="progressbar">&nbsp;</div>
+		</div>
+	</div>
+</div>

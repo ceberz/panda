@@ -1,0 +1,6 @@
+*.log
+*.pid
+uuid.state
+.DS_Store
+database.yml
+schema.rb
