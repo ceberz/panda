@@ -16,28 +16,19 @@ Merb::Config.use do |c|
   c[:session_store] = 'cookie'
 end
 
-use_orm :activerecord
+# use_orm :activerecord
 
-dependencies 'merb_helpers', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog'
+dependencies 'merb_helpers', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
+require 'sqs'
 
 Merb::BootLoader.after_app_loads do
   # Panda specific
 
   unless Merb.environment == "test"
-    require File.join(Merb.root, '..', 'aws_connect')
-
-    AWS::S3::Base.establish_connection!(
-      :access_key_id     => ACCESS_KEY_ID,
-      :secret_access_key => SECRET_ACCESS_KEY
-    )
-
-    Rog.prefix = "HQ"
-    Rog.host = PANDA_LOG_SERVER
-    Rog.port = 3333
-    Rog.log :info, "Panda HQ app awake"
+    require "config" / "aws"
     
     Merb::Mailer.config = {
       :host=>'localhost',
@@ -49,7 +40,5 @@ Merb::BootLoader.after_app_loads do
     }
   end
 end
-
-
 
 EMAIL_SENDER = "Panda <info@pandastream.com>"

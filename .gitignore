@@ -4,3 +4,4 @@ uuid.state
 .DS_Store
 database.yml
 schema.rb
+aws.rb

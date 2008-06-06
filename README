@@ -1,9 +1,79 @@
 Panda is a Merb app which runs on a special EC2 instance to encode videos for you. Uploaded videos are stored on S3 with a small amount of info kept in SimpleDB. The REST API makes it easy to integrate user video uploading into your web application.
 
 How does Panda work?
+====================
 
 1. Video is uploaded to panda
 2. Panda checks the video's metadata, uploads the raw file to S3 and adds it to the encoding queue
 3. The encoder application picks the encoding job off the queue when it's free and encodes the video to all possible formats
 4. Panda sends a callback to your web application notifying you the video has been encoded
 5. You use the S3 url of the encoding you want to show to your users
+
+Installation and setup
+======================
+
+# Gems you'll need
+
+SQS (http://sqs.rubyforge.org/)
+S3 (http://amazon.rubyforge.org/)
+SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
+RVideo
+
+Further information
+===================
+
+Investigating encoding errors
+-----------------------------
+
+When an encoding fails the status of the video is set to 'error' and the output of ffmpeg is saved on S3 with the filename video_token.error
+
+SimpleDB schemas
+================
+
+Videos
+------
+
+    token
+    filename
+    title
+    original
+
+    status # original, queued, processing, done, error
+
+    duration
+    container
+    width
+    height
+
+    video_codec
+    video_bitrate
+    fps
+    audio_codec
+    audio_bitrate
+    audio_sample_rate
+
+    encoding_profile # id of encoding profile used
+    encoding_profile_title
+
+    updated_at
+    created_at
+
+Encoding profiles
+-----------------
+
+    title
+
+    container
+    width
+    height
+
+    video_codec
+    video_bitrate
+    fps
+    audio_codec
+    audio_bitrate
+    audio_sample_rate
+
+    updated_at
+    created_at
+
