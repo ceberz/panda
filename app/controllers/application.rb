@@ -16,7 +16,7 @@ private
       @user = User.find(session[:user_key]) if session[:user_key]
       throw :halt, redirect("/login") unless @user
     when "xml", "yaml"
-      throw :halt, render('', :status => 401) unless params[:account_key] == API_KEY
+      throw :halt, render('', :status => 401) unless params[:account_key] == Panda::Config[:api_key]
     else
       throw :halt, render('', :status => 401)
     end

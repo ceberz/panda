@@ -31,7 +31,7 @@ function objToString(o) {
     function showResponse(xhr, statusText)  {
         data = $.httpData(xhr, "json");
         // window.console.log(objToString(data));
-        if (data.location) {
+        if (data.location) { // # TODO check http status!
             location.href = data.location;
         } else {
             $('#uploading').hide();

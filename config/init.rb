@@ -18,7 +18,7 @@ end
 
 # use_orm :activerecord
 
-dependencies 'merb_helpers', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo'
+dependencies 'merb-assets', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
@@ -29,7 +29,6 @@ Merb::BootLoader.after_app_loads do
 
   unless Merb.environment == "test"
     require "config" / "aws"
-    require "config" / "panda"
     
     Merb::Mailer.config = {
       :host=>'localhost',
@@ -39,6 +38,14 @@ Merb::BootLoader.after_app_loads do
       # :pass=>'',
       # :auth=>:plain # :plain, :login, :cram_md5, the default is no auth
     }
+  end
+  
+  Panda::Config.use do |p|
+    p[:account_name]           = "New Bamboo"
+    p[:api_key]                = "f9e69730-16fd-012b-731d-001ec2b5c0e1"
+    p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
+    p[:state_update_url]       = "http://localhost:4000/videos/$id/status"
+    p[:storage]                = :filesystem # or :s3 # TODO: implement
   end
 end
 

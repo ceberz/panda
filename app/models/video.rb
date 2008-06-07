@@ -30,7 +30,7 @@ class Video < SimpleDB::Base
   end
   
   def upload_redirect_url
-    UPLOAD_REDIRECT_URL.gsub(/\$id/,self.key)
+    Panda::Config[:upload_redirect_url].gsub(/\$id/,self.key)
   end
   
   def duration_str
@@ -71,7 +71,7 @@ class Video < SimpleDB::Base
     self.audio_codec = (inspector.audio_codec rescue nil)
     self.audio_sample_rate = (inspector.audio_sample_rate rescue nil)
     
-    raise FormatNotRecognised if self.width.nil? or self.height.nil? # Little final check we actually have some usable video
+    # raise FormatNotRecognised if self.width.nil? or self.height.nil? # Little final check we actually have some usable video
   end
   
   def upload_to_s3

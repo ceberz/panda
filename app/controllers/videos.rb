@@ -1,7 +1,7 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
   before :require_login, :only => [:index, :show, :new]
-  before :set_video, :only => [:show, :form, :upload]
+  before :set_video, :only => [:show, :form, :upload, :done, :state]
   
   # Use: HQ
   # Only used in the admin side to post to create and then forward to the form where the video is uploaded
@@ -77,19 +77,34 @@ class Videos < Application
     rescue Video::VideoError
       status = 500
       render_error($!.to_s.gsub(/Video::/,""))
+    rescue
+      status = 500
+      # render_error("InternalServerError") # TODO: Use this generic error in production
     else
       case content_type
       when :html  
-        Rog.log :info, "#{params[:id]}: Redirecting to #{video.upload_redirect_url}"
+        Rog.log :info, "#{params[:id]}: Redirecting to #{@video.upload_redirect_url}"
         
         # Special internal Panda case: textarea hack to get around the fact that the form is submitted with a hidden iframe and thus the response is rendered in the iframe
         if params[:iframe] == "true"
-          "<textarea>" + {:location => video.upload_redirect_url}.to_json + "</textarea>"
+          "<textarea>" + {:location => @video.upload_redirect_url}.to_json + "</textarea>"
         else
-          redirect video.upload_redirect_url
+          redirect @video.upload_redirect_url
         end
       end
     end
+  end
+  
+  # NOTE: Default done page people see after successfully uploading a video. Edit init.rb and set upload_redirect_url to be somewhere else.
+  def done
+    provides :html
+    render
+  end
+  
+  # NOTE: This action should only be used for local testing, and in production should be an action in the app you're integrating Panda into. Be sure to set the state_update_url setting in your init.rb
+  # TODO: Only allow from localhost
+  def state
+    Merb.logger.info(params.to_yaml)
   end
   
 private
@@ -110,51 +125,4 @@ private
       {:error => msg}.to_yaml
     end
   end
-end
-
-class VideosOld < Application
-  provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
-  before :require_login, :only => [:index, :create]
-  # before :require_internal_auth, :only => [:valid,:uploaded]
-  before :set_video, :only => [:show, :valid, :uploaded]
-  
-  def index
-    provides :html, :xml, :yaml
-    # @videos = AWS::S3::Bucket.find('pandavision').objects
-    @videos = @account.videos.find(:all, :order => "created_at desc")
-    
-    case content_type
-    when :html
-      render :layout => :accounts
-    when :xml
-      {:videos => @videos.map {|v| v.show_response }}.to_simple_xml
-    when :yaml
-      {:videos => @videos.map {|v| v.show_response }}.to_yaml
-    end
-  end
-  
-  def show
-    provides :html, :xml, :yaml
-    
-    case content_type
-    when :html
-      @account = Account.find(session[:account_id]) if session[:account_id]
-      if @account
-        render :layout => :accounts
-      else
-        redirect("/login")
-      end
-    when :xml
-      @video.show_response.to_simple_xml
-    when :yaml
-      @video.show_response.to_yaml
-    end
-  end
-  
-  # Just for our testing
-  def new
-    provides :html
-    render :layout => "simple"
-  end
-
 end
