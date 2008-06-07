@@ -1,0 +1,46 @@
+body {
+  font-family: "Lucida Grande", Arial, Verdana, sans-serif;
+  font-size: 12px;
+  background-color: #fff;
+  padding: 5px;
+}
+* {
+  margin: 0px;
+  padding: 0px;
+  text-decoration: none;
+}
+
+.bar {
+  float: left;
+  width: 300px;
+  height: 24px;
+}
+
+.button {
+  margin-left: 5px;
+}
+
+#upload input, .button, .bar {
+  float: left;
+}
+
+#progress {
+  background: url("/images/bar_bg.gif") top left no-repeat;
+}
+#progressbar {
+  display: block;
+  height: 22px;
+  width: 0px;
+  border: 1px solid #272727;
+  background: url("/images/bar_prog.gif") top left repeat-x;
+}
+
+#donebar {
+  background: url("/images/bar_done.gif") top left repeat-x;
+}
+
+#eta {
+  font-size: 0.8em;
+  color: #999;
+  clear: left;
+}

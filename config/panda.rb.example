@@ -1,0 +1,6 @@
+# Could be moved to SimpleDB
+
+ACCOUNT_NAME = "My Panda Account"
+API_KEY = "9e3f7190-1627-012b-7315-001ec2b5c0d1"
+UPLOAD_REDIRECT_URL = "http://127.0.0.1:3000/videos/$1/done" # GET
+STATE_UPDATE_URL = "http://127.0.0.1:3000/videos/$1/status" # POST

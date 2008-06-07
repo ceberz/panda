@@ -18,7 +18,7 @@ end
 
 # use_orm :activerecord
 
-dependencies 'merb_helpers', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db'
+dependencies 'merb_helpers', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
@@ -29,6 +29,7 @@ Merb::BootLoader.after_app_loads do
 
   unless Merb.environment == "test"
     require "config" / "aws"
+    require "config" / "panda"
     
     Merb::Mailer.config = {
       :host=>'localhost',

@@ -13,7 +13,7 @@
 	<div id="container">
 		<div id="header" class="clearfix">
 			<div id="account">
-				<h2><%= @account.name %></h2>
+				<h2><%= ACCOUNT_NAME %></h2>
 				<p><a href="/logout">Logout</a></p>
 			</div>
 			
@@ -22,7 +22,6 @@
 			<ul id="nav" class="clearfix">
 				<%= nav_item "dashboard", "/" %>
 				<%= nav_item "videos" %>
-				<%= nav_item "account", {:controller => "accounts", :actions => [:index,:edit]} %>
 				<li><a href="http://pandastream.com/docs" target="_blank">Documentation</a></li>
 			</ul>
 		</div>

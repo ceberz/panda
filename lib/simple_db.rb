@@ -1,6 +1,8 @@
 class SimpleDB
   
   class Base
+    attr_accessor :key, :attributes
+  
     def self.establish_connection!(opts)
       @@connection = Amazon::SDB::Base.new(opts[:access_key_id], opts[:secret_access_key])
     end
@@ -19,20 +21,25 @@ class SimpleDB
       self.domain_name = d
     end
     
-    attr_accessor :key, :attributes
+    def self.properties(*props)
+      props.each do |p|
+        class_eval "def #{p}; self.attributes['#{p}']; end"
+        class_eval "def #{p}=(v); self.attributes['#{p}'] = v; end"
+      end
+    end
 
     def initialize(key=nil, multimap_or_hash=nil)
       self.key = (key || UUID.new)
       self.attributes = multimap_or_hash.nil? ? Amazon::SDB::Multimap.new : (multimap_or_hash.kind_of?(Hash) ? Amazon::SDB::Multimap.new(multimap_or_hash) : multimap_or_hash)
     end
 
-    def self.create(values)
-      self.key = UUID.new
-      self.attributes = Amazon::SDB::Multimap.new(*values)
+    def self.create(values=nil)
+      key = UUID.new
+      attributes = values.nil? ? Amazon::SDB::Multimap.new : Amazon::SDB::Multimap.new(*values)
       self.new(key, attributes)
     end
 
-    def self.create!(values)
+    def self.create!(values=nil)
       video = self.create(values)
       video.save
       video
@@ -69,6 +76,12 @@ class SimpleDB
         result << self.new(i.key, i.attributes)
       end
       return result
+    end
+    
+  private
+  
+    def method_missing(meth, *args)
+      self.attributes.send(meth)
     end
   end
 end

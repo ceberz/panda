@@ -5,3 +5,4 @@ uuid.state
 database.yml
 schema.rb
 aws.rb
+panda.rb

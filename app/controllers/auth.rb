@@ -3,21 +3,15 @@ class Auth < Application
   # Auth plugin
   
   def login
-    @account = Account.new
+    @user = User.new
     
     if request.post?
-      Merb.logger.info("AUTH DEBUG: Got post")
-      Merb.logger.info(params[:account].to_yaml)
-      
-      if @account = Account.authenticate(params[:account])
-        Merb.logger.info("AUTH DEBUG: Account.authenticate returned valid account")
-        session[:account_id] = @account.id
-        Merb.logger.info("AUTH DEBUG: session[:account_id] = #{@account.id}")
+      if @user = User.authenticate(params[:user][:login], params[:user][:password])
+        session[:user_key] = @user.login # AKA @user.key
         redirect "/"
       else
-        @account = Account.new(:login => params[:account][:login])
+        @user.key = params[:account][:login] # The login is the key of our SDB record
         @notice = "Your username or password was incorrect."
-        Merb.logger.info("AUTH DEBUG: Invalid auth")
       end
     end
     
@@ -25,7 +19,7 @@ class Auth < Application
   end
   
   def logout
-    session[:account_id] = nil
+    session[:user_key] = nil
     redirect "/"
   end
 end

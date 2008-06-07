@@ -19,6 +19,12 @@ S3 (http://amazon.rubyforge.org/)
 SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
 RVideo
 
+# FFMPEG
+
+Available in all good package repositories including Darwin Ports.
+
+If you're developing on Mac OS X, you can grab ffmpeg out of the ffmpegX application instead of compiling it: http://www.macosxhints.com/article.php?story=20061220082125312
+
 Further information
 ===================
 
@@ -33,9 +39,8 @@ SimpleDB schemas
 Videos
 ------
 
-    token
-    filename
-    title
+    filename # 976a4b00-16cc-012b-7316-001ec2b5c0e1.flv
+    original_filename # sneezing_panda.flv
     original
 
     status # original, queued, processing, done, error
@@ -49,7 +54,6 @@ Videos
     video_bitrate
     fps
     audio_codec
-    audio_bitrate
     audio_sample_rate
 
     encoding_profile # id of encoding profile used

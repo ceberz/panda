@@ -1,0 +1,69 @@
+<% throw_content(:head) do %>
+<script type="text/javascript" charset="utf-8">
+function objToString(o) {
+    var s = '{\n';
+    for (var p in o)
+        s += '    ' + p + ': ' + o[p] + '\n';
+    return s + '}';
+}
+
+    // prepare the form when the DOM is ready 
+    $(document).ready(function() { 
+        var options = { 
+            beforeSubmit: showRequest,  // pre-submit callback 
+            complete:     showResponse,  // post-submit callback 
+            dataType:     'json'        // 'xml', 'script', or 'json' (expected server response type) 
+        }; 
+
+        // bind form using 'ajaxForm' 
+        $('#upload').ajaxForm(options); 
+    }); 
+
+    // pre-submit callback 
+    function showRequest(formData, jqForm, options) {
+        $('#uploader').hide()
+        $('#uploading').show()
+        jQuery.nginxUploadProgress({uuid: "<%= params[:id] %>"});
+        return true; 
+    } 
+
+    // post-submit callback 
+    function showResponse(xhr, statusText)  {
+        data = $.httpData(xhr, "json");
+        // window.console.log(objToString(data));
+        if (data.location) {
+            location.href = data.location;
+        } else {
+            $('#uploading').hide();
+            if (data.error == "NotValid") {
+                $('#error').text("This video upload was not valid. Please try beginning the upload process again.");
+            } else if (data.error == "FormatNotRecognised") {
+                $('#uploader').show();
+                $('#error').text('The video format was not recognised. Please ensure that your video follows the <a href="http://pandastream.com/docs/upload_format_guidelines" target="_blank">upload format guidelines</a>.');
+            } else {
+                $('#uploader').show();
+                $('#error').text('Unfortunately there was an error uploading your video. We have been notified of this issue. Please try uploading your video again shortly.');
+            }
+        }
+    }
+</script>
+<% end %>
+
+<div id="pandaloader">
+    <div id="error"></div>
+    
+	<div id="uploader">
+		<form id="upload" enctype="multipart/form-data" action="/videos/<%= params[:id] %>/upload?X-Progress-ID=<%= params[:id] %>" method="post">
+			<input name="file" type="file" />
+			<input name="iframe" type="hidden" value="true" />
+			<input type="submit" value="Upload" />
+		</form>
+	</div>
+
+	<div id="uploading" style="display:none;">
+		<div id="progress" class="bar">
+			<div id="progressbar">&nbsp;</div>
+		</div>
+		<div id="eta"></div>
+	</div>
+</div>
