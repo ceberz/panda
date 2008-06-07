@@ -98,7 +98,7 @@ class Videos < Application
   # NOTE: Default done page people see after successfully uploading a video. Edit init.rb and set upload_redirect_url to be somewhere else.
   def done
     provides :html
-    render
+    render :layout => :uploader
   end
   
   # NOTE: This action should only be used for local testing, and in production should be an action in the app you're integrating Panda into. Be sure to set the state_update_url setting in your init.rb
