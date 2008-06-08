@@ -47,20 +47,20 @@ def ffmpeg_resolution_and_padding(inspector, encoding, log)
   # Calculate resolution and any padding
   in_w = inspector.width.to_f
   in_h = inspector.height.to_f
-  out_w = encoding[:width].to_f
-  out_h = encoding[:height].to_f
+  out_w = encoding.width.to_f
+  out_h = encoding.height.to_f
 
   begin
     aspect = in_w / in_h
   rescue
     log.error "Couldn't do w/h to caculate aspect. Just using the output resolution now."
-    return %(-s #{encoding[:width]}x#{encoding[:height]})
+    return %(-s #{encoding.width}x#{encoding.height})
   end
   
   height = (out_w / aspect.to_f).to_i
   height -= 1 if height % 2 == 1
   
-  opts_string = %(-s #{encoding[:width]}x#{height} )
+  opts_string = %(-s #{encoding.width}x#{height} )
   
   # Crop top and bottom is the video is too tall, but add top and bottom bars if it's too wide (aspect wise)
   if height > out_h
@@ -87,38 +87,37 @@ def encoding(key,log)
   video.status = 'encoding'
   video.save
   
+  puts video.attributes.to_h.to_yaml
+  
   log.info "Grabbing raw video from S3"
   video.fetch_from_s3
   
-  Rog.log :info, "job##{job[:id]}: Beginning encodings"
-  job[:video][:encodings].each do |encoding|
+  video.encodings.each do |encoding|
     log.info "Beginning encoding:"
-    log.info encoding.to_yaml
+    log.info puts encoding.attributes.to_h.to_yaml
     
-    Rog.log :info, "job##{job[:id]}: Encoding #{encoding[:id]}"
-    
-    enc_fn = File.join(PANDA_ENCODED_FILES, encoding[:filename])
+    Rog.log :info, "Encoding #{encoding.key}"
     
     # Encode video
     log.info "Encoding video..."
-    inspector = RVideo::Inspector.new(:file => raw_fn)
+    inspector = RVideo::Inspector.new(:file => video.tmp_filepath)
     transcoder = RVideo::Transcoder.new
     
     recipe_options = {:input_file => raw_fn, :output_file => enc_fn, 
-      :audio_bitrate => encoding[:audio_bitrate].to_s, 
-      :audio_bitrate_in_bits => encoding[:audio_bitrate_in_bits].to_s, 
-      :container => encoding[:container], 
-      :video_bitrate => encoding[:video_bitrate_in_bits].to_s, 
-      :resolution => encoding[:resolution],
+      :audio_bitrate => encoding.audio_bitrate.to_s, 
+      :audio_bitrate_in_bits => encoding.audio_bitrate_in_bits.to_s, 
+      :container => encoding.container, 
+      :video_bitrate_in_bits => encoding.video_bitrate_in_bits.to_s, 
+      :resolution => encoding.resolution,
       :resolution_and_padding => ffmpeg_resolution_and_padding(inspector, encoding, log)
       }
     
     log.info recipe_options.to_yaml
     
     begin
-      case encoding[:format]
+      case encoding.container
       when "flv"
-        recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate$ -r 22 $resolution_and_padding$ -y $output_file$"
+        recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
         recipe += "\nflvtool2 -U $output_file$"
         transcoder.execute(recipe, recipe_options)
       when "flash-h264"
@@ -165,15 +164,10 @@ def encoding(key,log)
       
       # Now upload it to S3
       if File.exists?(enc_fn)
-        Rog.log :info, "job##{job[:id]}: Success encoding #{encoding[:id]}. Uploading to S3."
-        log.info "Uploading #{enc_fn}"
-        begin
-          S3VideoObject.store(encoding[:filename], open(enc_fn), :access => :public_read)        
-        rescue
-          Rog.log :error, "job##{job[:id]}: Couldn't upload file to S3, retrying"
-          retry
-        end
-        FileUtils.rm enc_fn
+        Rog.log :info, "job##{job[:id]}: Success encoding #{encoding.filename}. Uploading to S3."
+        log.info "Uploading #{encoding.filename}"
+        encoding.upload_to_s3
+        FileUtils.rm encoding.tmp_filepath
         log.info "Done uploading"
         
         # Update the encoding data which will be returned to the server

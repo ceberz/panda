@@ -1,7 +1,6 @@
 class Video < SimpleDB::Base
   set_domain 'panda_videos'
   properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_sample_rate, :profile, :profile_title, :updated_at, :created_at
-  attr_accessor :raw_filename # Used when uploading video files (storing location of temp file)
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -14,6 +13,11 @@ class Video < SimpleDB::Base
   # Finders
   # =======
   
+  # Only parent videos (no encodings)
+  def self.all
+    self.query("['status' = 'original']")
+  end
+  
   def self.queued_videos
     self.query("['status' = 'processing' or 'status' = 'queued']")
   end
@@ -22,8 +26,17 @@ class Video < SimpleDB::Base
     self.query("['status' = 'done']")
   end
   
+  def encodings
+    self.class.query("['parent' = '#{self.key}']")
+  end
+  
   # Attr helpers
   # ============
+  
+  # Location to store video file fetched from S3 for encoding
+  def tmp_filepath
+    Panda::Config[:tmp_video_dir] / self.filename
+  end
   
   # Has the actual video file been uploaded for encoding?
   def empty?
@@ -37,6 +50,46 @@ class Video < SimpleDB::Base
   def duration_str
     s = (self.duration.to_i || 0) / 1000
     "#{sprintf("%02d", s/60)}:#{sprintf("%02d", s%60)}"
+  end
+  
+  def resolution
+    self.width ? "#{self.width}x#{self.height}" : nil
+  end
+  
+  def video_bitrate_in_bits
+    self.video_bitrate * 1024
+  end
+  
+  def audio_bitrate_in_bits
+    self.audio_bitrate * 1024
+  end
+  
+  # S3
+  # ==
+  
+  def upload_to_s3(access = :private)
+    Rog.log :info, "#{self.key}: Uploading video to S3"
+    
+    begin
+      retryable(:tries => 5) do
+        S3RawVideoObject.store(self.filename, File.open(self.tmp_filepath), :access => access)
+      end
+    rescue
+      Rog.log :info, "#{self.key}: Error with S3"
+      raise
+    end
+  end
+  
+  def fetch_from_s3
+    begin
+      retryable(:tries => 5) do
+        open(self.tmp_filepath, 'w') do |file|
+          S3RawVideoObject.stream(self.filename) {|chunk| file.write chunk}
+        end
+      end
+    rescue
+      raise
+    end
   end
   
   # Uploads
@@ -56,7 +109,7 @@ class Video < SimpleDB::Base
   def read_metadata
     Rog.log :info, "#{self.key}: Meading metadata of video file"
     
-    inspector = RVideo::Inspector.new(:file => @raw_filename)
+    inspector = RVideo::Inspector.new(:file => self.tmp_filepath)
 
     raise FormatNotRecognised unless inspector.valid? and inspector.video?
 
@@ -75,36 +128,28 @@ class Video < SimpleDB::Base
     # raise FormatNotRecognised if self.width.nil? or self.height.nil? # Little final check we actually have some usable video
   end
   
-  def upload_to_s3
-    Rog.log :info, "#{self.key}: Uploading video to S3"
-    
-    begin
-      retryable(:tries => 5) do
-        S3RawVideoObject.store(self.filename, File.open(@raw_filename), :access => :private)
-      end
-    rescue
-      Rog.log :info, "#{self.key}: Error with S3"
-      raise
-    end
-  end
-  
   def add_to_queue
     # TODO: Allow manual selection of encoding profiles used in both form and api
     # For now we will just encode to all available profiles
     Profile.query.each do |p|
       cur_video = Video.query("['parent' = '#{self.key}'] intersection ['profile' = '#{p.key}']")
       unless cur_video
+        # TODO: move to a method like self.add_encoding
         video = Video.new
         video[:profile] = p.key
         video[:profile_title] = p.title
         video[:status] = 'queued'
         video[:parent] = self.key
-        [:container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate].each do |k|
+        [:original_filename, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate].each do |k|
           video.put(k, p.get(k))
         end
+        video[:filename] = "#{self.key}.#{video.container}"
         video.save
       end
     end
+    
+    # Add job to queue
+    Queue.encodings.send_message(self.key)
   end
   
   # Exceptions
@@ -121,20 +166,4 @@ class Video < SimpleDB::Base
   # Encoding
   # ========
   
-  # Location to store video file fetched from S3 for encoding
-  def tmp_filepath
-    Panda::Config[:tmp_video_dir] / self.filename
-  end
-  
-  def fetch_from_s3
-    begin
-      retryable(:tries => 5) do
-        open(self.tmp_filepath, 'w') do |file|
-          S3RawVideoObject.stream(self.filename) {|chunk| file.write chunk}
-        end
-      end
-    rescue
-      raise
-    end
-  end
 end

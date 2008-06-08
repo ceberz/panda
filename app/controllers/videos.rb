@@ -92,8 +92,8 @@ class Videos < Application
       raise Video::NoFileSubmitted if !params[:file] || params[:file].blank?
       @video = Video.find(params[:id])
       @video.filename = @video.key + File.extname(params[:file][:filename])
+      FileUtils.mv params[:file][:tempfile].path, @video.tmp_filepath
       @video.original_filename = params[:file][:filename]
-      @video.raw_filename = params[:file][:tempfile].path
       @video.process
       @video.save
     rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
