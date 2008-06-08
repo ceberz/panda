@@ -1,5 +1,6 @@
 class User < SimpleDB::Base
   set_domain 'panda_users'
+  properties :password, :email, :salt, :crypted_password
   attr_accessor :password, :password_confirmation
   
   def login

@@ -2,14 +2,22 @@ class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
   before :require_login, :only => [:index, :show, :new]
   before :set_video, :only => [:show, :form, :upload, :done, :state]
-  
-  # Use: HQ
-  # Only used in the admin side to post to create and then forward to the form where the video is uploaded
-  def new
-    provides :html
-    render :layout => :simple
+
+  def index
+    provides :html, :xml, :yaml
+    # @videos = AWS::S3::Bucket.find('pandavision').objects
+    @videos = @account.videos.find(:all, :order => "created_at desc")
+    
+    case content_type
+    when :html
+      render :layout => :accounts
+    when :xml
+      {:videos => @videos.map {|v| v.show_response }}.to_simple_xml
+    when :yaml
+      {:videos => @videos.map {|v| v.show_response }}.to_yaml
+    end
   end
-  
+
   def show
     provides :html, :xml, :yaml
     
@@ -27,6 +35,21 @@ class Videos < Application
     when :yaml
       @video.show_response.to_yaml
     end
+  end
+  
+  # Use: HQ
+  # Only used in the admin side to post to create and then forward to the form where the video is uploaded
+  def new
+    provides :html
+    render :layout => :simple
+  end
+  
+  def edit
+    # TODO: Edit video action
+  end
+  
+  def delete
+    # TODO: Delete video action
   end
 
   # Use: HQ, API
@@ -49,6 +72,10 @@ class Videos < Application
       puts @video.create_response.to_yaml
       @video.create_response.to_yaml
     end
+  end
+  
+  def update
+    # TODO: Update video action
   end
   
   # Use: HQ, API, iframe upload

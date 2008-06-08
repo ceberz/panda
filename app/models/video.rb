@@ -88,7 +88,8 @@ class Video < SimpleDB::Base
   end
   
   def add_to_queue
-    # TODO
+    # TODO: Allow manual selection of encoding profiles used in both form and api
+    # For now we will just encode to all available profiles
   end
   
   # Exceptions
