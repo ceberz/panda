@@ -1,7 +1,7 @@
 class Video < SimpleDB::Base
   set_domain 'panda_videos'
   properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_sample_rate, :profile, :profile_title, :updated_at, :created_at
-  attr_accessor :raw_filename # Used when uploading video files
+  attr_accessor :raw_filename # Used when uploading video files (storing location of temp file)
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -10,6 +10,7 @@ class Video < SimpleDB::Base
   def to_sym
     'videos'
   end
+  
   # Finders
   # =======
   
@@ -78,7 +79,7 @@ class Video < SimpleDB::Base
     Rog.log :info, "#{self.key}: Uploading video to S3"
     
     begin
-      retryable(:tries => 2) do
+      retryable(:tries => 5) do
         S3RawVideoObject.store(self.filename, File.open(@raw_filename), :access => :private)
       end
     rescue
@@ -116,4 +117,24 @@ class Video < SimpleDB::Base
   # 500
   class NoFileSubmitted < VideoError; end
   class FormatNotRecognised < VideoError; end
+  
+  # Encoding
+  # ========
+  
+  # Location to store video file fetched from S3 for encoding
+  def tmp_filepath
+    Panda::Config[:tmp_video_dir] / self.filename
+  end
+  
+  def fetch_from_s3
+    begin
+      retryable(:tries => 5) do
+        open(self.tmp_filepath, 'w') do |file|
+          S3RawVideoObject.stream(self.filename) {|chunk| file.write chunk}
+        end
+      end
+    rescue
+      raise
+    end
+  end
 end

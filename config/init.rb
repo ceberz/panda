@@ -46,6 +46,7 @@ Merb::BootLoader.after_app_loads do
     p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
     p[:state_update_url]       = "http://localhost:4000/videos/$id/status"
     p[:storage]                = :filesystem # or :s3 # TODO: implement
+    p[:tmp_video_dir]          = Merb.root / "videos"
   end
 end
 

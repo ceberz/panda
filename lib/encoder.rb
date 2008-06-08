@@ -33,7 +33,7 @@ fileo = FileOutputter.new('fileOutputter', :filename => File.join(File.dirname(_
 log.add fileo
 log.level = Log4r::DEBUG
 
-log.info 'Encoder awake...'
+log.info 'Encoder awake!'
 
 # New remote logger
 
@@ -42,27 +42,6 @@ Rog.prefix = "Encoder##{HOSTNAME}"
 Rog.host = PANDA_LOG_SERVER
 Rog.port = 3333
 Rog.log :info, "Panda Encoder app awake"
-
-require 'fileutils'
-require 'net/http'
-require 'yaml'
-require 'uuid'
-require 'rvideo'
-
-require 'retryable'
-
-require 'sqs'
-require 'aws/s3'
-
-require AWS_CONNECT_FILE
-AWS::S3::Base.establish_connection!(
-  :access_key_id     => ACCESS_KEY_ID,
-  :secret_access_key => SECRET_ACCESS_KEY
-)
-
-require 'easy_request' # To connect to the internal api
-
-log.info "Ready for action!"
 
 def ffmpeg_resolution_and_padding(inspector, encoding, log)
   # Calculate resolution and any padding
@@ -97,29 +76,19 @@ def ffmpeg_resolution_and_padding(inspector, encoding, log)
   return opts_string
 end
 
-def handle_job(job,log)
+def encoding(key,log)
   log.info "=========================================================="
   log.info Time.now
   log.info "=========================================================="
-  log.info "Beginning job with token #{job[:video][:token]}"
+  log.info "Beginning encoding of video #{key}"
   begun_encoding = Time.now
   
+  video = Video.find(key)
+  video.status = 'encoding'
+  video.save
+  
   log.info "Grabbing raw video from S3"
-  
-  raw_fn = File.join(PANDA_RAW_FILES, job[:video][:token])
-  
-  # Fetch file from S3
-  Rog.log :info, "job##{job[:id]}: Fetching raw video file #{job[:video][:token]} from S3"
-  begin
-    retryable(:tries => 10) do
-      open(raw_fn, 'w') do |file|
-        S3RawVideoObject.stream(job[:video][:token]) {|chunk| file.write chunk}
-      end
-    end
-  rescue
-    Rog.log :error, "job##{job[:id]}: Couldn't fetch file from S3"
-    raise
-  end
+  video.fetch_from_s3
   
   Rog.log :info, "job##{job[:id]}: Beginning encodings"
   job[:video][:encodings].each do |encoding|
@@ -234,69 +203,18 @@ def handle_job(job,log)
 end
 
 loop do
-  sleep 10
-  # log.info "Checking for messages... #{Time.now}"
+  sleep 3
+  log.info "Checking for messages... #{Time.now}"
+  next unless m = Queue.encodings.receive_message
   
-  result = nil
-  begin
-    retryable(:tries => 10) do
-      result = easy_request(:get, "/jobs/next")
-    end
-  rescue
-    Rog.log :error, "Couldn't connect to internal api"
-    log.error "Couldn't connect to internal api"
-    next
-  end
-  
-  case result
-  when Net::HTTPSuccess
-    # log.info "Got a message!"
-    response = YAML.load(result.body)
+  log.info "Got a message!"
+  key = m.body
+  log.info key
+  m.delete
+  # Maybe we should encase this in a begin rescue?
+  job_result = encode_video(key,log)
     
-    case response.keys.first
-    when :command
-      case response[:command]
-      when :wait
-        # Well...we just do nothing!
-      when :shutdown
-        # Kill ourselves!
-      else
-        log.warn "Panda gave an unexpected response command: #{response[:command]}"
-        Rog.log :error, "Panda gave an unexpected response command: #{response[:command]}"
-      end
-    when :job
-      Rog.log :info, "job##{response[:job][:id]}: Recieved job"
-      
-      log.debug "--> #{result.code} #{result.message} (#{result.body.length})"
-      log.debug result.body
-      
-      # Some rudimentary error checking
-      next unless response[:job][:video]
-      
-      # Maybe we should encase this in a begin rescue?
-      job_result = handle_job(response[:job],log)
-      
-      # Post the job result back
-      begin
-        retryable(:tries => 10) do
-          result = easy_request(:post, "/jobs/#{response[:job][:id]}/done", {"result" => job_result.to_yaml})
-          log.debug "--> #{result.code} #{result.message} (#{result.body.length})"
-          log.debug result.body
-        end
-      rescue
-        Rog.log :error, "Couldn't connect to internal api"
-        log.error "Couldn't connect to internal api"
-      end
-    else
-      log.warn "Didn't do anything. Maybe Panda returned an unexpected response"
-      Rog.log :error, "Didn't do anything. Maybe Panda returned an unexpected response"
-    end
-    
-    # TODO: tell user video has been encoded
-  else
-    log.warn "Panda returned an unexpected response"
-  end
-  
+  # log.warn "Panda returned an unexpected response"
 end
 
 # recipe = "ffmpeg -i $input_file$ -ar 22050 -ab 48 -vcodec h264 -f mp4 -b #{video[:video_bitrate]} -r #{inspector.fps} -s" 
