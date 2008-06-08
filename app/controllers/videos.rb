@@ -95,6 +95,7 @@ class Videos < Application
       @video.original_filename = params[:file][:filename]
       @video.raw_filename = params[:file][:tempfile].path
       @video.process
+      @video.save
     rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
       status = 404
       render_error($!.to_s.gsub(/Amazon::SDB::/,""))

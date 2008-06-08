@@ -23,8 +23,8 @@ class SimpleDB
     
     def self.properties(*props)
       props.each do |p|
-        class_eval "def #{p}; self.attributes['#{p}']; end"
-        class_eval "def #{p}=(v); self.attributes['#{p}'] = v; end"
+        class_eval "def #{p}; self.get('#{p}'); end"
+        class_eval "def #{p}=(v); self.put('#{p}', v); end"
       end
     end
 
@@ -33,24 +33,33 @@ class SimpleDB
       self.attributes = multimap_or_hash.nil? ? Amazon::SDB::Multimap.new : (multimap_or_hash.kind_of?(Hash) ? Amazon::SDB::Multimap.new(multimap_or_hash) : multimap_or_hash)
     end
 
-    def self.create(values=nil)
+    def self.create(*values)
       key = UUID.new
       attributes = values.nil? ? Amazon::SDB::Multimap.new : Amazon::SDB::Multimap.new(*values)
       self.new(key, attributes)
     end
 
-    def self.create!(values=nil)
-      video = self.create(values)
+    def self.create!(*values)
+      video = self.create(*values)
       video.save
       video
     end
-
+    
+    def get(key)
+      reload! if self.attributes.size == 0
+      self.attributes.coerce(self.attributes.get(key))
+    end
+    
     def [](key)
-      self.attributes[key]
+      self.get(key)
     end
 
+    def put(key, value)
+      self.attributes.put(key, value, :replace => true)
+    end
+    
     def []=(key, value)
-      self.attributes[key] = value
+      self.put(key, value)
     end
 
     def save
@@ -70,12 +79,13 @@ class SimpleDB
       self.new(key, self.domain.get_attributes(key).attributes)
     end
 
-    def self.query(query_options='')
+    def self.query(expr="", query_options={})
       result = []
-      self.domain.query(query_options).each do |i|
+      self.domain.query(query_options.merge({:expr => expr})).each do |i|
         result << self.new(i.key, i.attributes)
       end
-      return result
+      # Return nil instead if []
+      result.size == 0 ? nil : result
     end
     
   private

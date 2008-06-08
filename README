@@ -25,6 +25,18 @@ Available in all good package repositories including Darwin Ports.
 
 If you're developing on Mac OS X, you can grab ffmpeg out of the ffmpegX application instead of compiling it: http://www.macosxhints.com/article.php?story=20061220082125312
 
+Configuration
+=============
+
+Encoding profiles
+-----------------
+
+    Profile.create!(:title => "Flash video SD",  :container => "flv", :video_bitrate => 300, :audio_bitrate => 48, :width => 320, :height => 240, :fps => 24, :position => 0)
+    Profile.create!(:title => "Flash video HI",  :container => "flv", :video_bitrate => 400, :audio_bitrate => 48, :width => 480, :height => 360, :fps => 24, :position => 1)
+    Profile.create!(:title => "Flash h264 SD",   :container => "mp4", :video_bitrate => 300, :audio_bitrate => 48, :width => 320, :height => 240, :fps => 24, :position => 2)
+    Profile.create!(:title => "Flash h264 HI",   :container => "mp4", :video_bitrate => 400, :audio_bitrate => 48, :width => 480, :height => 360, :fps => 24, :position => 3)
+    Profile.create!(:title => "Flash h264 480p", :container => "mp4", :video_bitrate => 600, :audio_bitrate => 48, :width => 852, :height => 480, :fps => 24, :position => 4)
+
 Further information
 ===================
 
@@ -41,7 +53,7 @@ Videos
 
     filename # 976a4b00-16cc-012b-7316-001ec2b5c0e1.flv
     original_filename # sneezing_panda.flv
-    original
+    parent
 
     status # original, queued, processing, done, error
 
@@ -56,8 +68,8 @@ Videos
     audio_codec
     audio_sample_rate
 
-    encoding_profile # id of encoding profile used
-    encoding_profile_title
+    profile # id of encoding profile used
+    profile_title
 
     updated_at
     created_at

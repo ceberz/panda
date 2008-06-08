@@ -1,6 +1,6 @@
 class Video < SimpleDB::Base
   set_domain 'panda_videos'
-  properties :filename, :original_filename, :original, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_sample_rate, :encoding_profile, :encoding_profile_title, :updated_at, :created_at
+  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_sample_rate, :profile, :profile_title, :updated_at, :created_at
   attr_accessor :raw_filename # Used when uploading video files
   
   # TODO: state machine for status
@@ -90,6 +90,20 @@ class Video < SimpleDB::Base
   def add_to_queue
     # TODO: Allow manual selection of encoding profiles used in both form and api
     # For now we will just encode to all available profiles
+    Profile.query.each do |p|
+      cur_video = Video.query("['parent' = '#{self.key}'] intersection ['profile' = '#{p.key}']")
+      unless cur_video
+        video = Video.new
+        video[:profile] = p.key
+        video[:profile_title] = p.title
+        video[:status] = 'queued'
+        video[:parent] = self.key
+        [:container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate].each do |k|
+          video.put(k, p.get(k))
+        end
+        video.save
+      end
+    end
   end
   
   # Exceptions
