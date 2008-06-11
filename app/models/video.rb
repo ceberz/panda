@@ -135,16 +135,16 @@ class Video < SimpleDB::Base
       cur_video = Video.query("['parent' = '#{self.key}'] intersection ['profile' = '#{p.key}']")
       unless cur_video
         # TODO: move to a method like self.add_encoding
-        video = Video.new
-        video[:profile] = p.key
-        video[:profile_title] = p.title
-        video[:status] = 'queued'
-        video[:parent] = self.key
+        encoding = Video.new
+        encoding[:profile] = p.key
+        encoding[:profile_title] = p.title
+        encoding[:status] = 'queued'
+        encoding[:parent] = self.key
         [:original_filename, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate].each do |k|
-          video.put(k, p.get(k))
+          encoding.put(k, p.get(k))
         end
-        video[:filename] = "#{self.key}.#{video.container}"
-        video.save
+        encoding[:filename] = "#{encoding.key}.#{p.container}"
+        encoding.save
       end
     end
     

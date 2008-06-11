@@ -114,7 +114,7 @@ def encoding(key,log)
     
     log.info recipe_options.to_yaml
     
-    begin
+    # begin
       case encoding.container
       when "flv"
         recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
@@ -157,43 +157,43 @@ def encoding(key,log)
         log.info Time.now
       else
         log.warn "Error: unknown encoding format given"
-        Rog.log :error, "job##{job[:id]}: Couldn't encode #{encoding[:id]}. Unknown encoding format given."
+        Rog.log :error, "Couldn't encode #{encoding.key}. Unknown encoding format given."
       end
       
       log.info "Done encoding"
       
       # Now upload it to S3
       if File.exists?(enc_fn)
-        Rog.log :info, "job##{job[:id]}: Success encoding #{encoding.filename}. Uploading to S3."
+        Rog.log :info, "Success encoding #{encoding.filename}. Uploading to S3."
         log.info "Uploading #{encoding.filename}"
+        
         encoding.upload_to_s3
         FileUtils.rm encoding.tmp_filepath
+        
         log.info "Done uploading"
         
         # Update the encoding data which will be returned to the server
-        encoding[:status] = "success"
+        encoding.status = "success"
       else
-        encoding[:status] = "error"
-        Rog.log :info, "job##{job[:id]}: Couldn't upload #{encoding[:id]} to S3. To file #{enc_fn} doesn't exist."
+        encoding.status = "error"
+        Rog.log :info, "Couldn't upload #{encoding.key]} to S3 as #{enc_fn} doesn't exist."
         log.warn "Error: Cannot upload as #{enc_fn} does not exist"
       end
       
-      # Seems like it was a success
-      encoding[:status] = "success"
-      encoding[:executed_commands] = transcoder.executed_commands
-    rescue RVideo::TranscoderError => e
-      encoding[:status] = "error"
-      encoding[:executed_commands] = transcoder.executed_commands
-      Rog.log :error, "job##{job[:id]}: Error transcoding #{encoding[:id]}: #{e.class} - #{e.message}"
-      log.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
-    end
+      # encoding[:executed_commands] = transcoder.executed_commands
+    # rescue RVideo::TranscoderError => e
+    #   encoding.status = "error"
+    #   # encoding[:executed_commands] = transcoder.executed_commands
+    #   Rog.log :error, "Error transcoding #{encoding[:id]}: #{e.class} - #{e.message}"
+    #   log.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
+    # end
   end
   
   log.info "All encodings complete!"
-  Rog.log :info, "job##{job[:id]}: Complete!"
+  Rog.log :info, "Complete!"
   FileUtils.rm raw_fn
-  job[:encoding_time] = Time.now - begun_encoding
-  return job
+  encoding.encoding_time = Time.now - begun_encoding
+  return true
 end
 
 loop do
