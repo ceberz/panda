@@ -18,7 +18,7 @@ end
 
 # use_orm :activerecord
 
-dependencies 'merb-assets', 'merb-mailer', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda'
+dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'

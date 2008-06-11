@@ -84,8 +84,6 @@ class SimpleDB
       self.domain.query(query_options.merge({:expr => expr})).each do |i|
         result << self.new(i.key, i.attributes)
       end
-      # Return nil instead if []
-      result.size == 0 ? nil : result
     end
     
   private
