@@ -96,18 +96,18 @@ class Videos < Application
       @video.original_filename = params[:file][:filename]
       @video.process
       @video.save
-    rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
-      status = 404
-      render_error($!.to_s.gsub(/Amazon::SDB::/,""))
-    rescue Video::NotValid # Video object is not empty. It's likely a video has already been uploaded for this object.
-      status = 404
-      render_error($!.to_s.gsub(/Video::/,""))
-    rescue Video::VideoError
-      status = 500
-      render_error($!.to_s.gsub(/Video::/,""))
-    rescue
-      status = 500
-      # render_error("InternalServerError") # TODO: Use this generic error in production
+    # rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
+    #   # status = 404
+    #   render_error($!.to_s.gsub(/Amazon::SDB::/,""))
+    # rescue Video::NotValid # Video object is not empty. It's likely a video has already been uploaded for this object.
+    #   # status = 404
+    #   render_error($!.to_s.gsub(/Video::/,""))
+    # rescue Video::VideoError
+    #   # status = 500
+    #   render_error($!.to_s.gsub(/Video::/,""))
+    # rescue
+    #   # status = 500
+    #   # render_error("InternalServerError") # TODO: Use this generic error in production
     else
       case content_type
       when :html  
@@ -138,14 +138,14 @@ class Videos < Application
 private
 
   def render_error(msg)
-    Rog.log :error, "#{params[:id]}: (500 returned to client) #{msg}"
+    Merb.logger :error, "#{params[:id]}: (500 returned to client) #{msg}"
 
     case content_type
     when :html
       if params[:iframe] == "true"
         "<textarea>" + {:error => msg}.to_json + "</textarea>"
       else
-        render(:template => "/exceptions/new_internal_server_error") # TODO: Why is :action setting 404 instead of 500?!?!
+        render(:template => "/exceptions/internal_server_error") # TODO: Why is :action setting 404 instead of 500?!?!
       end
     when :xml
       {:error => msg}.to_simple_xml
