@@ -84,12 +84,7 @@ class SimpleDB
       self.domain.query(query_options.merge({:expr => expr})).each do |i|
         result << self.new(i.key, i.attributes)
       end
-    end
-    
-  private
-  
-    def method_missing(meth, *args)
-      self.attributes.send(meth)
+      return result
     end
   end
 end

@@ -3,13 +3,13 @@
 		<h2><a href="#" onclick="window.open('/videos/new', 'panda_upload', 'toolbar=0,scrollbars=0,location=0,statusbar=0,menubar=0,resizable=0,width=395,height=35');return false;">Upload a test video</a></h2>
 	</div>
 
-	<h2>Queued videos</h2>
+	<h2>Encoding queue</h2>
 
-	<%= partial "videos/list", :videos => @queued_videos %>
+	<%# partial "videos/list", :videos => @encoding_queue %>
 
-	<h2>Recently completed videos</h2>
+	<h2>Recently uploaded videos</h2>
 
-	<%= partial "videos/list", :videos => @recently_completed_videos %>
+	<%= partial "videos/list", :videos => @recent_videos %>
 
 	<div class="more_videos"><a href="/videos">View all videos</a></div>
 </div>

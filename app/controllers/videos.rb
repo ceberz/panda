@@ -10,7 +10,7 @@ class Videos < Application
     
     case content_type
     when :html
-      render :layout => :accounts
+      render
     when :xml
       {:videos => @videos.map {|v| v.show_response }}.to_simple_xml
     when :yaml
@@ -26,7 +26,7 @@ class Videos < Application
       # TODO: use proper auth method
       @user = User.find(session[:user_key]) if session[:user_key]
       if @user
-        render :layout => :accounts
+        render
       else
         redirect("/login")
       end

@@ -1,6 +1,6 @@
 class Video < SimpleDB::Base
   set_domain 'panda_videos'
-  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_sample_rate, :profile, :profile_title, :updated_at, :created_at
+  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :updated_at, :created_at
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -18,13 +18,17 @@ class Video < SimpleDB::Base
     self.query("['status' = 'original']")
   end
   
-  def self.queued_videos
-    self.query("['status' = 'processing' or 'status' = 'queued']")
+  def self.recent_videos
+    self.query("['status' = 'original']", :max_results => 10, :load_attrs => true)
   end
   
-  def self.recently_completed_videos
-    self.query("['status' = 'done']")
-  end
+  # def self.queued_videos
+  #   self.query("['status' = 'processing' or 'status' = 'queued']")
+  # end
+  # 
+  # def self.recently_completed_videos
+  #   self.query("['status' = 'success']")
+  # end
   
   def encodings
     self.class.query("['parent' = '#{self.key}']")
@@ -64,15 +68,36 @@ class Video < SimpleDB::Base
     self.audio_bitrate * 1024
   end
   
+  # Encding attr helpers
+  # ====================
+  
+  def url
+    %(http://#{Panda::Config[:videos_domain]}/#{self.filename})
+  end
+  
+  def embed_html
+    %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}" />)
+  end
+  
   # S3
   # ==
   
-  def upload_to_s3(access = :private)
+  def upload_encoding_to_s3
+    begin
+      retryable(:tries => 5) do
+        S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
+      end
+    rescue
+      raise
+    end
+  end
+  
+  def upload_raw_to_s3
     Rog.log :info, "#{self.key}: Uploading video to S3"
     
     begin
       retryable(:tries => 5) do
-        S3RawVideoObject.store(self.filename, File.open(self.tmp_filepath), :access => access)
+        S3RawVideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :private)
       end
     rescue
       Rog.log :info, "#{self.key}: Error with S3"
@@ -98,7 +123,7 @@ class Video < SimpleDB::Base
   def process
     self.valid?
     self.read_metadata
-    self.upload_to_s3
+    self.upload_raw_to_s3
     self.add_to_queue
   end
   
@@ -133,17 +158,25 @@ class Video < SimpleDB::Base
     # For now we will just encode to all available profiles
     Profile.query.each do |p|
       cur_video = Video.query("['parent' = '#{self.key}'] intersection ['profile' = '#{p.key}']")
-      unless cur_video
+      if cur_video.empty?
         # TODO: move to a method like self.add_encoding
         encoding = Video.new
-        encoding[:profile] = p.key
-        encoding[:profile_title] = p.title
-        encoding[:status] = 'queued'
-        encoding[:parent] = self.key
-        [:original_filename, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate].each do |k|
+        encoding.status = 'queued'
+        encoding.filename = "#{encoding.key}.#{p.container}"
+        
+        # Attrs from the parent video
+        encoding.parent = self.key
+        [:original_filename, :duration].each do |k|
+          encoding.put(k, self.get(k))
+        end
+        
+        # Attrs from the profile
+        encoding.profile = p.key
+        encoding.profile_title = p.title
+        [:container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :player].each do |k|
           encoding.put(k, p.get(k))
         end
-        encoding[:filename] = "#{encoding.key}.#{p.container}"
+        
         encoding.save
       end
     end
@@ -167,24 +200,24 @@ class Video < SimpleDB::Base
   # Encoding
   # ========
   
-  def ffmpeg_resolution_and_padding(inspector, encoding, log)
+  def ffmpeg_resolution_and_padding(inspector)
     # Calculate resolution and any padding
     in_w = inspector.width.to_f
     in_h = inspector.height.to_f
-    out_w = encoding.width.to_f
-    out_h = encoding.height.to_f
+    out_w = self.width.to_f
+    out_h = self.height.to_f
 
     begin
       aspect = in_w / in_h
     rescue
-      Merb.logger :error,  "Couldn't do w/h to caculate aspect. Just using the output resolution now."
-      return %(-s #{encoding.width}x#{encoding.height})
+      Merb.logger.error "Couldn't do w/h to caculate aspect. Just using the output resolution now."
+      return %(-s #{self.width}x#{self.height})
     end
 
     height = (out_w / aspect.to_f).to_i
     height -= 1 if height % 2 == 1
 
-    opts_string = %(-s #{encoding.width}x#{height} )
+    opts_string = %(-s #{self.width}x#{height} )
 
     # Crop top and bottom is the video is too tall, but add top and bottom bars if it's too wide (aspect wise)
     if height > out_h
@@ -205,45 +238,46 @@ class Video < SimpleDB::Base
     Merb.logger.info Time.now.to_s
     Merb.logger.info "=========================================================="
     Merb.logger.info "Beginning encoding of video #{self.key}"
-    begun_encoding = Time.now
-
-    self.status = 'encoding'
-    self.save
-
     Merb.logger.info self.attributes.to_h.to_yaml
-
     Merb.logger.info "Grabbing raw video from S3"
     self.fetch_from_s3
 
+    Merb.logger.info "No encodings for this video!" if self.encodings.empty?
+    
     self.encodings.each do |encoding|
+      encoding.reload!
+      begun_encoding = Time.now
       Merb.logger.info "Beginning encoding:"
       Merb.logger.info encoding.attributes.to_h.to_yaml
 
       Merb.logger.info "Encoding #{encoding.key}"
 
       # Encode video
-      Merb.logger.info "Encoding self..."
+      Merb.logger.info "Encoding video..."
       inspector = RVideo::Inspector.new(:file => self.tmp_filepath)
       transcoder = RVideo::Transcoder.new
 
       recipe_options = {:input_file => self.tmp_filepath, :output_file => encoding.tmp_filepath, 
+        :container => encoding.container, 
+        :video_codec => encoding.video_codec,
+        :video_bitrate_in_bits => encoding.video_bitrate_in_bits.to_s, 
+        :fps => encoding.fps,
+        :audio_codec => encoding.audio_codec.to_s, 
         :audio_bitrate => encoding.audio_bitrate.to_s, 
         :audio_bitrate_in_bits => encoding.audio_bitrate_in_bits.to_s, 
-        :container => encoding.container, 
-        :video_bitrate_in_bits => encoding.video_bitrate_in_bits.to_s, 
+        :audio_sample_rate => encoding.audio_sample_rate.to_s, 
         :resolution => encoding.resolution,
-        :resolution_and_padding => ffmpeg_resolution_and_padding(inspector, encoding, log)
+        :resolution_and_padding => encoding.ffmpeg_resolution_and_padding(inspector)
         }
 
       Merb.logger.info recipe_options.to_yaml
 
       # begin
-        case encoding.container
-        when "flv"
+        if encoding.container == "flv" and encoding.player == "flash"
           recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
           recipe += "\nflvtool2 -U $output_file$"
           transcoder.execute(recipe, recipe_options)
-        when "flash-h264"
+        elsif encoding.container == "mp4" and encoding.audio_codec == "aac" and encoding.player == "flash"
           # Just the video without audio
           temp_video_output_file = "#{encoding.tmp_filepath}.temp.self.mp4"
           temp_audio_output_file = "#{encoding.tmp_filepath}.temp.audio.mp4"
@@ -278,9 +312,11 @@ class Video < SimpleDB::Base
             FileUtils.mv(temp_video_output_file, encoding.tmp_filepath)
           end
           Merb.logger.info Time.now
-        else
+        else # Try straight ffmpeg encode
+          recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
+          transcoder.execute(recipe, recipe_options)
           # log.warn "Error: unknown encoding format given"
-          Merb.logger :error, "Couldn't encode #{encoding.key}. Unknown encoding format given."
+          # Merb.logger.error "Couldn't encode #{encoding.key}. Unknown encoding format given."
         end
 
         Merb.logger.info "Done encoding"
@@ -290,19 +326,23 @@ class Video < SimpleDB::Base
           Merb.logger.info "Success encoding #{encoding.filename}. Uploading to S3."
           Merb.logger.info "Uploading #{encoding.filename}"
 
-          encoding.upload_to_s3
+          encoding.upload_encoding_to_s3
           FileUtils.rm encoding.tmp_filepath
 
           Merb.logger.info "Done uploading"
 
           # Update the encoding data which will be returned to the server
           encoding.status = "success"
+          
+          # encoding.encoding_time = Time.now - begun_encoding
         else
           encoding.status = "error"
           Merb.logger.info "Couldn't upload #{encoding.key} to S3 as #{encoding.tmp_filepath} doesn't exist."
           # log.warn "Error: Cannot upload as #{encoding.tmp_filepath} does not exist"
         end
 
+        encoding.save
+        
         # encoding[:executed_commands] = transcoder.executed_commands
       # rescue RVideo::TranscoderError => e
       #   encoding.status = "error"
@@ -315,7 +355,6 @@ class Video < SimpleDB::Base
     Merb.logger.info "All encodings complete!"
     Merb.logger.info "Complete!"
     FileUtils.rm self.tmp_filepath
-    encoding.encoding_time = Time.now - begun_encoding
     return true
   end
 end

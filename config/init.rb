@@ -45,6 +45,7 @@ Merb::BootLoader.after_app_loads do
     p[:api_key]                = "f9e69730-16fd-012b-731d-001ec2b5c0e1"
     p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
     p[:state_update_url]       = "http://localhost:4000/videos/$id/status"
+    p[:videos_domain]          = "videos.pandastream.com"
     p[:storage]                = :filesystem # or :s3 # TODO: implement
     p[:tmp_video_dir]          = Merb.root / "videos"
   end
