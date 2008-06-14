@@ -17,7 +17,12 @@ Installation and setup
 SQS (http://sqs.rubyforge.org/)
 S3 (http://amazon.rubyforge.org/)
 SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
+
 RVideo
+------
+
+Build gem from svn://rubyforge.org/var/svn/rvideo/trunk with `rake install_gem`.
+Then `sudo cp lib/rvideo/tools/*.rb  /Library/Ruby/Gems/1.8/gems/rvideo-0.9.4/lib/rvideo/tools/` on OS X.
 
 # FFMPEG
 

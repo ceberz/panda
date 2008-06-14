@@ -68,6 +68,14 @@ class Video < SimpleDB::Base
     self.audio_bitrate * 1024
   end
   
+  def thumbnail
+    self.filename + ".jpg"
+  end
+  
+  def thumbnail_url
+    %(http://#{Panda::Config[:videos_domain]}/#{self.thumbnail})
+  end
+  
   # Encding attr helpers
   # ====================
   
@@ -76,7 +84,7 @@ class Video < SimpleDB::Base
   end
   
   def embed_html
-    %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}" />)
+    %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}&image=#{self.thumbnail_url}" />)
   end
   
   # S3
@@ -111,6 +119,20 @@ class Video < SimpleDB::Base
         open(self.tmp_filepath, 'w') do |file|
           S3RawVideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
+      end
+    rescue
+      raise
+    end
+  end
+  
+  def capture_thumbnail_and_upload_to_s3
+    image_tmp_filepath = self.tmp_filepath + ".jpg"
+    t = RVideo::Inspector.new(:file => self.tmp_filepath)
+    t.capture_frame('50%', image_tmp_filepath)
+    
+    begin
+      retryable(:tries => 5) do
+        S3VideoObject.store(self.filename + ".jpg", File.open(image_tmp_filepath), :access => :public_read)
       end
     rescue
       raise
@@ -269,6 +291,8 @@ class Video < SimpleDB::Base
         :resolution => encoding.resolution,
         :resolution_and_padding => encoding.ffmpeg_resolution_and_padding(inspector)
         }
+        
+      self.capture_thumbnail_and_upload_to_s3
 
       Merb.logger.info recipe_options.to_yaml
 
@@ -327,6 +351,8 @@ class Video < SimpleDB::Base
           Merb.logger.info "Uploading #{encoding.filename}"
 
           encoding.upload_encoding_to_s3
+          encoding.capture_thumbnail_and_upload_to_s3
+          
           FileUtils.rm encoding.tmp_filepath
 
           Merb.logger.info "Done uploading"
@@ -354,7 +380,7 @@ class Video < SimpleDB::Base
 
     Merb.logger.info "All encodings complete!"
     Merb.logger.info "Complete!"
-    FileUtils.rm self.tmp_filepath
+    # FileUtils.rm self.tmp_filepath
     return true
   end
 end
