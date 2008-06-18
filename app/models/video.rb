@@ -1,6 +1,6 @@
 class Video < SimpleDB::Base
   set_domain 'panda_videos'
-  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :updated_at, :created_at
+  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -23,7 +23,7 @@ class Video < SimpleDB::Base
   end
   
   def self.recent_encodings
-    self.query("['status' = 'success']", :max_results => 10, :load_attrs => true)
+    self.query("['status' = 'success'] intersection ['encoded_at_desc' > '0']", :max_results => 10, :load_attrs => true)
   end
   
   def self.queued_encodings
@@ -78,6 +78,13 @@ class Video < SimpleDB::Base
   
   def thumbnail_url
     %(http://#{Panda::Config[:videos_domain]}/#{self.thumbnail})
+  end
+  
+  # SimpleDB returns things in ascending order only, so to order by desc we have to take the value away from a big number and store it in alother column. See here for more info: http://developer.amazonwebservices.com/connect/thread.jspa?threadID=19939&tstart=0
+  # TODO: Implement this as part of the simple_db.rb lib.
+  def set_encoded_at(v)
+    self.encoded_at = v
+    self.encoded_at_desc = 1000000000000 - v.to_i
   end
   
   # Encding attr helpers
