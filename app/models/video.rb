@@ -22,10 +22,14 @@ class Video < SimpleDB::Base
     self.query("['status' = 'original']", :max_results => 10, :load_attrs => true)
   end
   
-  # def self.queued_videos
-  #   self.query("['status' = 'processing' or 'status' = 'queued']")
-  # end
-  # 
+  def self.recent_encodings
+    self.query("['status' = 'success']", :max_results => 10, :load_attrs => true)
+  end
+  
+  def self.queued_encodings
+    self.query("['status' = 'processing' or 'status' = 'queued']")
+  end
+  
   # def self.recently_completed_videos
   #   self.query("['status' = 'success']")
   # end

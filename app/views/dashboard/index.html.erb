@@ -5,11 +5,11 @@
 
 	<h2>Encoding queue</h2>
 
-	<%# partial "videos/list", :videos => @encoding_queue %>
+	<%= partial "encodings/list", :encodings => @queued_encodings %>
 
-	<h2>Recently uploaded videos</h2>
+	<h2>Recently encoded</h2>
 
-	<%= partial "videos/list", :videos => @recent_videos %>
+	<%= partial "encodings/list", :encodings => @recent_encodings %>
 
 	<div class="more_videos"><a href="/videos">View all videos</a></div>
 </div>

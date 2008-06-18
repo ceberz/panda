@@ -159,38 +159,38 @@ button {
 
 /* VIDEOS LIST */
 
-#videos {
+table.videos {
   width: 100%;
   border-collapse: collapse;
 }
-.dashboard #videos, .more_videos {
+.dashboard table.videos, .more_videos {
   width: 630px;
 }
-#videos th, #videos td {
+table.videos th, table.videos td {
   padding: 3px 4px;
 }
-#videos th {
+table.videos th {
   background: #eee;
   color: #888;
   font-size: 0.9em;
   text-align: left;
 }
-#videos tr {
+table.videos tr {
   border-bottom: 1px solid #dedede;
 }
-#videos .filename {
+table.videos .filename {
   font-weight: bold;
-  display: block;
 }
-#videos .token {
+table.videos td span {
+	display: block;
   font-size: 0.8em;
   color: #555;
 }
-#videos .error, #videos .encoding_error {
+table.videos .error, table.videos .encoding_error {
   font-weight: bold;
   color: #f90203;
 }
-#videos .done {
+table.videos .success {
   font-weight: bold;
   color: #86b514;
 }
