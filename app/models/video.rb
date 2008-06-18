@@ -23,16 +23,20 @@ class Video < SimpleDB::Base
   end
   
   def self.recent_encodings
-    self.query("['status' = 'success'] intersection ['encoded_at_desc' > '0']", :max_results => 10, :load_attrs => true)
+    self.query("['encoded_at_desc' > '0'] intersection ['status' = 'success']", :max_results => 10, :load_attrs => true)
   end
   
   def self.queued_encodings
-    self.query("['status' = 'processing' or 'status' = 'queued']")
+    self.query("['status' = 'processing' or 'status' = 'queued']", :load_attrs => true)
   end
   
   # def self.recently_completed_videos
   #   self.query("['status' = 'success']")
   # end
+  
+  def parent_video
+    self.class.find(self.parent)
+  end
   
   def encodings
     self.class.query("['parent' = '#{self.key}']")
@@ -370,14 +374,14 @@ class Video < SimpleDB::Base
 
           # Update the encoding data which will be returned to the server
           encoding.status = "success"
-          
-          # encoding.encoding_time = Time.now - begun_encoding
+          encoding.set_encoded_at(Time.now)
         else
           encoding.status = "error"
           Merb.logger.info "Couldn't upload #{encoding.key} to S3 as #{encoding.tmp_filepath} doesn't exist."
           # log.warn "Error: Cannot upload as #{encoding.tmp_filepath} does not exist"
         end
-
+        
+        encoding.encoding_time = (Time.now - begun_encoding).to_i
         encoding.save
         
         # encoding[:executed_commands] = transcoder.executed_commands

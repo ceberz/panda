@@ -12,11 +12,17 @@ How does Panda work?
 Installation and setup
 ======================
 
-# Gems you'll need
+Gems
+----
 
 SQS (http://sqs.rubyforge.org/)
 S3 (http://amazon.rubyforge.org/)
 SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
+
+Other deps
+----------
+
+libgd2
 
 RVideo
 ------
@@ -24,7 +30,8 @@ RVideo
 Build gem from svn://rubyforge.org/var/svn/rvideo/trunk with `rake install_gem`.
 Then `sudo cp lib/rvideo/tools/*.rb  /Library/Ruby/Gems/1.8/gems/rvideo-0.9.4/lib/rvideo/tools/` on OS X.
 
-# FFMPEG
+FFMPEG
+-----
 
 Available in all good package repositories including Darwin Ports.
 

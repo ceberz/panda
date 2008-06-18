@@ -26,7 +26,11 @@ class Videos < Application
       # TODO: use proper auth method
       @user = User.find(session[:user_key]) if session[:user_key]
       if @user
-        render
+        if @video.status == "original"
+          render :show_parent
+        else
+          render :show_encoding
+        end
       else
         redirect("/login")
       end
