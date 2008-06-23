@@ -6,7 +6,7 @@ class Videos < Application
   def index
     provides :html, :xml, :yaml
     # @videos = AWS::S3::Bucket.find('pandavision').objects
-    @videos = @account.videos.find(:all, :order => "created_at desc")
+    @videos = Video.all
     
     case content_type
     when :html
