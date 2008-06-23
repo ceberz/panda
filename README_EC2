@@ -5,10 +5,53 @@ Launch the AMI
 --------------
 ec2-run-instances ami-5538dd3c -k pv-keypair
 
+DO THIS: Install stuff which will be in the next AMI
+-------------------------------------------
+
+# libjpeg
+http://www.ijg.org/
+http://www.libgd.org/FAQ#gd_keeps_saying_it_can.27t_find_png_or_jpeg_support._I_did_install_libpng_and_libjpeg._What_am_I_missing.3F
+
+# libgd
+http://www.libgd.org/Main_Page
+
+Grab Panda
+----------
+
 cd /usr/local/panda
 git clone git@github.com:newbamboo/panda.git
 
 Create buckets, domains and queues
 ----------------------------------
 
-You'll need two S3 buckets, one encoded videos (tip: name this a domain such videos.pandastream.com and you can setup a CNAME to S3) another to keep the raw video files in (currently saved with private access only)
+* S3 bucket for video files (tip: name this a domain such videos.pandastream.com and you can setup a CNAME to S3)
+* SQS queue for the encoding queue
+* SimpleDB domains for videos, profiles and admin users
+
+Login to the console with `merb -i` and run the following, probably replacing names with your own:
+
+    Panda::Setup.create_s3_bucket('videos.pandastream.com')
+    Panda::Setup.create_sqs_queue('panda_encoding')
+    Panda::Setup.create_sdb_domain('panda_videos')
+    Panda::Setup.create_sdb_domain('panda_profiles')
+    Panda::Setup.create_sdb_domain('panda_users')
+
+Configure Panda
+---------------
+
+Copy the `aws.rb.example` file in the config directory to `aws.rb` and change the names of the S3 bucket and SQS queue to the ones used in the previous step.
+
+If you used different names for the SimpleDB domains you'll need to edit the second line of the files in the app/models directory.
+
+Next edit the `merb.rb` file in the config directory, ensuring you at least create a new random API key.
+
+Create first admin user
+-----------------------
+
+Login to the console with `merb -i`:
+
+    u = User.new
+    u.login = 'admin'
+    u.email = 'email@mydomain'
+    u.set_password('SECRETPASS')
+    u.save
