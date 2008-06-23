@@ -280,6 +280,8 @@ class Video < SimpleDB::Base
     if self.encoding?
       r[:video].merge!([:parent, :profile, :profile_title, :encoded_at, :encoding_time].map_to_hash {|k| {k => self.send(k)} })
     end
+    
+    return r
   end
   
   def create_response

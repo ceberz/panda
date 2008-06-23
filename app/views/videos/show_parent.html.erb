@@ -1,14 +1,20 @@
 <h2><%= @video.original_filename %></h2>
 
 <dl>
-	<dt>Key:</dt>
-	<dd><%= @video.key %></dd>
-	<dt>Duration:</dt>
-	<dd><%= @video.duration_str %></dd>
+  <dt>ID:</dt>
+  <dd><%= @video.key %></dd>
+  <dt>Status:</dt>
+  <dd><%= @video.status %></dd>
+  <dt>Original filename:</dt>
+  <dd><%= @video.original_filename %></dd>
+  <dt>Resolution:</dt>
+  <dd><%= @video.resolution %></dd>
+  <dt>Duration:</dt>
+  <dd><%= @video.duration_str %></dd>
 </dl>
 
 <% @video.encodings.each do |enc| %>
-	<h3><%= enc.profile_title %></h3>
+	<h3><a href="/videos/<%= enc.key %>"><%= enc.profile_title %></a></h3>
 	
 	<div class="video">
 	<% if enc.status == "success" %>

@@ -1,10 +1,27 @@
 <h2><%= @video.original_filename %></h2>
 
 <dl>
-	<dt>Key:</dt>
+	<dt>ID:</dt>
 	<dd><%= @video.key %></dd>
+  <dt>Status:</dt>
+  <dd><%= @video.status %></dd>
+	<dt>Original filename:</dt>
+	<dd><%= @video.original_filename %></dd>
+	<dt>Resolution:</dt>
+	<dd><%= @video.resolution %></dd>
 	<dt>Duration:</dt>
 	<dd><%= @video.duration_str %></dd>
+</dl>
+
+<dl>
+  <dt>Parent:</dt>
+  <dd><a href="/videos/<%= @video.parent %>"><%= @video.parent %></a></dd>
+  <dt>Profile:</dt>
+  <dd><%= @video.profile_title %> (<%= @video.profile %>)</dd>
+  <dt>Encoded at:</dt>
+  <dd><%= @video.encoded_at %></dd>
+  <dt>Encoding time:</dt>
+  <dd><%= @video.encoding_time %>s</dd>
 </dl>
 
 	<h3><%= @video.profile_title %></h3>
