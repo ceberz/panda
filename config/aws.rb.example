@@ -12,10 +12,6 @@ class Queue
   end
 end
 
-# Unencoded videos
-class S3RawVideoObject < AWS::S3::S3Object
-  set_current_bucket_to 'panda_raw'
-end
 # Encoded videos
 class S3VideoObject < AWS::S3::S3Object
   set_current_bucket_to 'videos.pandastream.com' # allows nice urls like http://videos.pandastream.com/video.flv

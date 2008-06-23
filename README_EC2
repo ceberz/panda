@@ -1,0 +1,14 @@
+Panda on EC2
+============
+
+Launch the AMI
+--------------
+ec2-run-instances ami-5538dd3c -k pv-keypair
+
+cd /usr/local/panda
+git clone git@github.com:newbamboo/panda.git
+
+Create buckets, domains and queues
+----------------------------------
+
+You'll need two S3 buckets, one encoded videos (tip: name this a domain such videos.pandastream.com and you can setup a CNAME to S3) another to keep the raw video files in (currently saved with private access only)

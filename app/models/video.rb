@@ -120,7 +120,7 @@ class Video < SimpleDB::Base
   # S3
   # ==
   
-  def upload_encoding_to_s3
+  def upload_to_s3
     begin
       retryable(:tries => 5) do
         S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
@@ -130,24 +130,11 @@ class Video < SimpleDB::Base
     end
   end
   
-  def upload_raw_to_s3
-    Rog.log :info, "#{self.key}: Uploading video to S3"
-    
-    begin
-      retryable(:tries => 5) do
-        S3RawVideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :private)
-      end
-    rescue
-      Rog.log :info, "#{self.key}: Error with S3"
-      raise
-    end
-  end
-  
   def fetch_from_s3
     begin
       retryable(:tries => 5) do
         open(self.tmp_filepath, 'w') do |file|
-          S3RawVideoObject.stream(self.filename) {|chunk| file.write chunk}
+          S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
       end
     rescue
@@ -180,7 +167,7 @@ class Video < SimpleDB::Base
   def process
     self.valid?
     self.read_metadata
-    self.upload_raw_to_s3
+    self.upload_to_s3
     self.add_to_queue
   end
   
@@ -422,7 +409,7 @@ class Video < SimpleDB::Base
           Merb.logger.info "Success encoding #{encoding.filename}. Uploading to S3."
           Merb.logger.info "Uploading #{encoding.filename}"
 
-          encoding.upload_encoding_to_s3
+          encoding.upload_to_s3
           encoding.capture_thumbnail_and_upload_to_s3
           
           FileUtils.rm encoding.tmp_filepath
