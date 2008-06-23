@@ -98,6 +98,7 @@ class Videos < Application
       FileUtils.mv params[:file][:tempfile].path, @video.tmp_filepath
       @video.original_filename = params[:file][:filename]
       @video.process
+      @video.status = "original"
       @video.save
     # rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
     #   # status = 404
