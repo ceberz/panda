@@ -1,5 +1,6 @@
 <table class="videos">
 	<tr>
+		<th></th>
 		<th>Filename</th>
 		<th>Encoding profile</th>
 		<th>Encoded at</th>
@@ -7,12 +8,13 @@
 	</tr>
 <% encodings.each do |v| %>
 	<tr>
+	  <td><img src="<%= v.thumbnail_url %>" /></td>
 		<td>
 			<a href="/videos/<%= v.key %>" class="filename"><%= v.original_filename || "No filename" %></a>
 			<span><%= v.duration_str %></span>
 		</td>
   	<td>
-  	  <%= v.profile_title %>
+  	  <a href="/videos/<%= v.parent %>" class="filename"><%= v.profile_title %></a>
   	  <span><%= v.resolution %> <%= v.container %></span>
   	</td>
 		<td><%= v.encoded_at.strftime("%d %b, %Y %H:%M") %></td>

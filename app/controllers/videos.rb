@@ -73,7 +73,6 @@ class Videos < Application
       @video.create_response.to_simple_xml
     when :yaml
       headers.merge!({'Location'=> "/videos/#{@video.key}"})
-      puts @video.create_response.to_yaml
       @video.create_response.to_yaml
     end
   end

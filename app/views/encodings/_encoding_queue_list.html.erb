@@ -12,7 +12,7 @@
 			<span><%= v.duration_str %></span>
 		</td>
   	<td>
-  	  <%= v.profile_title %>
+  	  <a href="/videos/<%= v.parent %>" class="filename"><%= v.profile_title %></a>
   	  <span><%= v.resolution %> <%= v.container %></span>
   	</td>
 		<td><%# v.created_at.strftime("%a, %d %b %Y %H:%M:%S") %></td>

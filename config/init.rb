@@ -18,11 +18,12 @@ end
 
 # use_orm :activerecord
 
-dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda', 'gd_resize'
+dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda', 'gd_resize', 'map_to_hash'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
 require 'sqs'
+require 'inline'
 
 Merb::BootLoader.after_app_loads do
   # Panda specific

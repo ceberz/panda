@@ -19,10 +19,17 @@ SQS (http://sqs.rubyforge.org/)
 S3 (http://amazon.rubyforge.org/)
 SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
 
+gem install RubyInline amazon_sdb sqs
+
 Other deps
 ----------
 
-libgd2
+# libjpeg
+http://www.ijg.org/
+http://www.libgd.org/FAQ#gd_keeps_saying_it_can.27t_find_png_or_jpeg_support._I_did_install_libpng_and_libjpeg._What_am_I_missing.3F
+
+# libgd
+http://www.libgd.org/Main_Page
 
 RVideo
 ------

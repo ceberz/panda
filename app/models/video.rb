@@ -4,10 +4,17 @@ class Video < SimpleDB::Base
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
-  # An encoding will have it's original attribute set to the key of the original parent, and a status of 'queued', 'processing', 'done', or 'error'
+  # An encoding will have it's original attribute set to the key of the original parent, and a status of 'queued', 'processing', 'success', or 'error'
   
   def to_sym
     'videos'
+  end
+  
+  # Classification
+  # ==============
+  
+  def encoding?
+    ['queued', 'processing', 'success', 'error'].include?(self.status)
   end
   
   # Finders
@@ -76,8 +83,16 @@ class Video < SimpleDB::Base
     self.audio_bitrate * 1024
   end
   
-  def thumbnail
+  def screenshot
     self.filename + ".jpg"
+  end
+  
+  def thumbnail
+    self.filename + "_thumb.jpg"
+  end
+  
+  def screenshot_url
+    %(http://#{Panda::Config[:videos_domain]}/#{self.screenshot})
   end
   
   def thumbnail_url
@@ -99,7 +114,7 @@ class Video < SimpleDB::Base
   end
   
   def embed_html
-    %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}&image=#{self.thumbnail_url}" />)
+    %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}&image=#{self.screenshot_url}" />)
   end
   
   # S3
@@ -141,13 +156,18 @@ class Video < SimpleDB::Base
   end
   
   def capture_thumbnail_and_upload_to_s3
-    image_tmp_filepath = self.tmp_filepath + ".jpg"
+    screenshot_tmp_filepath = self.tmp_filepath + ".jpg"
+    thumbnail_tmp_filepath = self.tmp_filepath + "_thumb.jpg"
+    
     t = RVideo::Inspector.new(:file => self.tmp_filepath)
-    t.capture_frame('50%', image_tmp_filepath)
+    t.capture_frame('50%', screenshot_tmp_filepath)
+    
+    GDResize.new.resize(screenshot_tmp_filepath, thumbnail_tmp_filepath, [96,96])
     
     begin
       retryable(:tries => 5) do
-        S3VideoObject.store(self.filename + ".jpg", File.open(image_tmp_filepath), :access => :public_read)
+        S3VideoObject.store(self.screenshot, File.open(screenshot_tmp_filepath), :access => :public_read)
+        S3VideoObject.store(self.thumbnail, File.open(thumbnail_tmp_filepath), :access => :public_read)
       end
     rescue
       raise
@@ -233,6 +253,41 @@ class Video < SimpleDB::Base
   # 500
   class NoFileSubmitted < VideoError; end
   class FormatNotRecognised < VideoError; end
+  
+  # API
+  # ===
+  
+  def show_response
+    # :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
+    
+    r = {:video => {
+        :id => self.key,
+        :status => self.status
+      }
+    }
+    
+    # Common attributes for originals and encodings
+    if self.status == 'original' or self.encoding?
+      r[:video].merge!([:filename, :original_filename, :screenshot, :thumbnail, :width, :height, :duration].map_to_hash {|k| {k => self.send(k)} })
+    end
+    
+    # If the video is a parent, also return the data for all its encodings
+    if self.status == 'original'
+      r[:video][:encodings] = self.encodings.map {|e| e.show_response}
+    end
+    
+    # Reutrn extra attributes if the video is an encoding
+    if self.encoding?
+      r[:video].merge!([:parent, :profile, :profile_title, :encoded_at, :encoding_time].map_to_hash {|k| {k => self.send(k)} })
+    end
+  end
+  
+  def create_response
+    {:video => {
+        :id => self.key
+      }
+    }
+  end
   
   # Encoding
   # ========
