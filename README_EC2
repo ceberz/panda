@@ -8,18 +8,14 @@ ec2-run-instances ami-5538dd3c -k pv-keypair
 DO THIS: Install stuff which will be in the next AMI
 -------------------------------------------
 
-# libjpeg
-http://www.ijg.org/
-http://www.libgd.org/FAQ#gd_keeps_saying_it_can.27t_find_png_or_jpeg_support._I_did_install_libpng_and_libjpeg._What_am_I_missing.3F
-
-# libgd
-http://www.libgd.org/Main_Page
+See README
 
 Grab Panda
 ----------
 
 cd /usr/local/panda
 git clone git@github.com:newbamboo/panda.git
+mkdir /usr/local/panda/videos # Place for temp videos
 
 Create buckets, domains and queues
 ----------------------------------
@@ -55,3 +51,8 @@ Login to the console with `merb -i`:
     u.email = 'email@mydomain'
     u.set_password('SECRETPASS')
     u.save
+
+Create an encoding profile
+--------------------------
+
+    Profile.create!(:title => "Flash video HI",  :container => "flv", :video_bitrate => 400, :audio_bitrate => 48, :width => 480, :height => 360, :fps => 24, :position => 1, :player => "flash")

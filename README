@@ -15,6 +15,7 @@ Installation and setup
 Gems
 ----
 
+Merb 0.9.2
 SQS (http://sqs.rubyforge.org/)
 S3 (http://amazon.rubyforge.org/)
 SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
