@@ -5,7 +5,7 @@ Launch the AMI
 --------------
 ec2-run-instances ami-5538dd3c -k pv-keypair
 
-DO THIS: Install stuff which will be in the next AMI
+(FIX) Install stuff which will be in the next AMI
 -------------------------------------------
 
 See README
@@ -56,3 +56,10 @@ Create an encoding profile
 --------------------------
 
     Profile.create!(:title => "Flash video HI",  :container => "flv", :video_bitrate => 400, :audio_bitrate => 48, :width => 480, :height => 360, :fps => 24, :position => 1, :player => "flash")
+    
+(FIX) Start Panda
+-----------------
+
+    /etc/init.d/nginx stop
+    cd /usr/local/www/panda
+    merb -p 80
