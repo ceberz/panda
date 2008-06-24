@@ -1,5 +1,5 @@
 class Video < SimpleDB::Base
-  set_domain 'panda_videos'
+  set_domain Panda::Config[:sdb_videos_domain]
   properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
   
   # TODO: state machine for status
@@ -226,7 +226,7 @@ class Video < SimpleDB::Base
     end
     
     # Add job to queue
-    Queue.encodings.send_message(self.key)
+    SQS.get_queue(:name => Panda::Config[:sqs_encoding_queue]).send_message(self.key)
   end
   
   # Exceptions

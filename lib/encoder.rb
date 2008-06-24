@@ -42,11 +42,12 @@ Merb.logger.info 'Encoder awake!'
 # Rog.host = PANDA_LOG_SERVER
 # Rog.port = 3333
 # Merb.logger.info "Panda Encoder app awake"
+q = SQS.get_queue(:name => Panda::Config[:sqs_encoding_queue])
 
 loop do
   sleep 3
   Merb.logger.info "Checking for messages... #{Time.now}"
-  next unless m = Queue.encodings.receive_message
+  next unless m = q.receive_message
   
   Merb.logger.info "Got a message!"
   key = m.body

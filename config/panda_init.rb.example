@@ -1,0 +1,19 @@
+require 'panda'
+
+Panda::Config.use do |p|
+  p[:account_name]           = "New Bamboo"
+  p[:api_key]                = "f9e3425-16fd-012b-731d-001ec2b5c0e1"
+  p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
+  p[:state_update_url]       = "http://localhost:4000/videos/$id/status"
+  p[:videos_domain]          = "videos.pandastream.com"
+  p[:storage]                = :filesystem # or :s3 # TODO: implement
+  p[:tmp_video_dir]          = Merb.root / "videos"
+  
+  p[:access_key_id]          = ""
+  p[:secret_access_key]      = ""
+  p[:s3_videos_bucket]       = "videos.pandastream.com"
+  p[:sqs_encoding_queue]     = "panda_encoding"
+  p[:sdb_videos_domain]      = "panda_videos"
+  p[:sdb_users_domain]       = "panda_users"
+  p[:sdb_profiles_domain]    = "panda_profiles"
+end
