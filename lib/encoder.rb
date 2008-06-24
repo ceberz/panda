@@ -54,8 +54,13 @@ loop do
   Merb.logger.info key
   m.delete
   # Maybe we should encase this in a begin rescue?
-  video = Video.find(key)
-  job_result = video.encode
+  begin
+    video = Video.find(key)
+  rescue Amazon::SDB::RecordNotFoundError
+    Merb.logger.info "Couldn't find video item with key #{key}. Discarding message."
+  else
+    job_result = video.encode
+  end
     
   # log.warn "Panda returned an unexpected response"
 end
