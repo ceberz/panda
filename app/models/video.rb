@@ -226,8 +226,7 @@ class Video < SimpleDB::Base
     end
     
     # Add job to queue
-    q = SQS.get_queue :name => 'panda_encoding'
-    q.send_message(self.key)
+    Queue.encodings.send_message(self.key)
   end
   
   # Exceptions
