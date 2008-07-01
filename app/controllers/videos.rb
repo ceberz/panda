@@ -91,7 +91,7 @@ class Videos < Application
   def upload
     provides :html#, :xml, :yaml, :json
     
-    begin
+    # begin
       raise Video::NoFileSubmitted if !params[:file] || params[:file].blank?
       @video = Video.find(params[:id])
       @video.filename = @video.key + File.extname(params[:file][:filename])
@@ -112,7 +112,7 @@ class Videos < Application
     # rescue
     #   # status = 500
     #   # render_error("InternalServerError") # TODO: Use this generic error in production
-    else
+    # else
       case content_type
       when :html  
         Rog.log :info, "#{params[:id]}: Redirecting to #{@video.upload_redirect_url}"
@@ -124,7 +124,7 @@ class Videos < Application
           redirect @video.upload_redirect_url
         end
       end
-    end
+    # end
   end
   
   # NOTE: Default done page people see after successfully uploading a video. Edit init.rb and set upload_redirect_url to be somewhere else.
