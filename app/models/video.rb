@@ -418,7 +418,7 @@ class Video < SimpleDB::Base
             # Convert to HE-AAC
             %x(neroAacEnc -br #{encoding[:audio_bitrate_in_bits]} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
             Merb.logger.info "Audio encoding done"
-            Merb.logger.info Time.now
+            Merb.logger.info Time.now.to_s
 
             # Squash the audio and video together
             FileUtils.rm(encoding.tmp_filepath) if File.exists?(encoding.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
@@ -432,7 +432,7 @@ class Video < SimpleDB::Base
             Merb.logger.info "This video does't have an audio stream"
             FileUtils.mv(temp_video_output_file, encoding.tmp_filepath)
           end
-          Merb.logger.info Time.now
+          Merb.logger.info Time.now.to_s
         else # Try straight ffmpeg encode
           recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
           transcoder.execute(recipe, recipe_options)
