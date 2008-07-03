@@ -1,3 +1,11 @@
+<ul class="actions">
+  <li><%= link_to "Add to queue", "/videos/#{@video.key}/add_to_queue" %></li>
+  <li>
+    <% form_tag(:action => url(:video, :id => @video.key), :method => :delete) do %>
+      <%= submit_button "Delete video", :onclick => "var agree=confirm('This will delete the original video file and all its encodings');if (agree) {return true} else {return false}" %>
+    <% end %>
+</ul>
+
 <h2><%= @video.original_filename %></h2>
 
 <dl>
@@ -13,13 +21,6 @@
   <dd><%= @video.duration_str %></dd>
 </dl>
 
-<ul class="actions">
-  <li><%= link_to "Add to queue", "/videos/#{@video.key}/add_to_queue" %></li>
-  <li>
-    <% form_tag(:action => url(:video, :id => @video.key), :method => :delete) do %>
-      <%= submit_button "Delete video", :onclick => "var agree=confirm('This will delete the original video file and all its encodings');if (agree) {return true} else {return false}" %>
-    <% end %>
-</ul>
 
 <% @video.encodings.each do |enc| %>
 	<h3><a href="/videos/<%= enc.key %>"><%= enc.profile_title %></a></h3>

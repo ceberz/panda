@@ -216,6 +216,18 @@ table.videos .success {
   clear: left;
 }
 
+.actions {
+	float: right;
+}
+.actions li {
+  margin-bottom: 5px;
+	 padding: 0px;
+  list-style-type: none;
+}
+.actions button {
+	margin: 0;
+}
+
 /* ACCOUNT */
 
 .account_details h3 {
