@@ -370,6 +370,9 @@ class Video < SimpleDB::Base
       Merb.logger.info encoding.attributes.to_h.to_yaml
 
       Merb.logger.info "Encoding #{encoding.key}"
+      
+      encoding.status = "processing"
+      encoding.save
 
       # Encode video
       Merb.logger.info "Encoding video..."
