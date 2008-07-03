@@ -1,7 +1,7 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
-  before :require_login, :only => [:index, :show, :new]
-  before :set_video, :only => [:show, :form, :upload, :done, :state, :add_to_queue]
+  before :require_login, :only => [:index, :show, :destroy, :new, :add_to_queue]
+  before :set_video, :only => [:show, :destroy, :form, :upload, :done, :state, :add_to_queue]
 
   def index
     provides :html, :xml, :yaml
@@ -52,8 +52,9 @@ class Videos < Application
     # TODO: Edit video action
   end
   
-  def delete
-    # TODO: Delete video action
+  def destroy
+    @video.obliterate!
+    redirect "/videos"
   end
 
   # Use: HQ, API

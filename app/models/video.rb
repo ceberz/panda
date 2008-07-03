@@ -52,6 +52,15 @@ class Video < SimpleDB::Base
   # Attr helpers
   # ============
   
+  def obliterate!
+    S3VideoObject.delete(self.filename)
+    self.encodings.each do |e|
+      S3VideoObject.delete(e.filename)
+      e.destroy!
+    end
+    self.destroy!
+  end
+  
   # Location to store video file fetched from S3 for encoding
   def tmp_filepath
     Panda::Config[:tmp_video_dir] / self.filename
@@ -134,6 +143,7 @@ class Video < SimpleDB::Base
     begin
       retryable(:tries => 5) do
         open(self.tmp_filepath, 'w') do |file|
+          Merb.logger.info "fetch_from_s3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
       end

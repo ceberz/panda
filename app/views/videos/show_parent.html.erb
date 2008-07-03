@@ -15,7 +15,10 @@
 
 <ul class="actions">
   <li><%= link_to "Add to queue", "/videos/#{@video.key}/add_to_queue" %></li>
-  <li><%= link_to "Delete video", "javascript:if(confirm('This will delete the original video file and all its encodings')) { window.location = '/videos/#{@video.key}/delete'}" %></li>
+  <li>
+    <% form_tag(:action => url(:video, :id => @video.key), :method => :delete) do %>
+      <%= submit_button "Delete video", :onclick => "var agree=confirm('This will delete the original video file and all its encodings');if (agree) {return true} else {return false}" %>
+    <% end %>
 </ul>
 
 <% @video.encodings.each do |enc| %>
