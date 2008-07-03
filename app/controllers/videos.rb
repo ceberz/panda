@@ -1,7 +1,7 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
   before :require_login, :only => [:index, :show, :new]
-  before :set_video, :only => [:show, :form, :upload, :done, :state]
+  before :set_video, :only => [:show, :form, :upload, :done, :state, :add_to_queue]
 
   def index
     provides :html, :xml, :yaml
@@ -140,6 +140,9 @@ class Videos < Application
   end
   
   def add_to_queue
+    @video.add_to_queue
+    redirect "/videos/#{@video.key}"
+  end
   
 private
 

@@ -10,12 +10,23 @@ ec2-run-instances ami-5538dd3c -k pv-keypair
 
 See README
 
+Nginx
+-----
+
+Required for progress uploads. Config is in /usr/local/nginx/conf/nginx.conf
+Bin is /usr/local/nginx/sbin/nginx
+
 Grab Panda
 ----------
 
 cd /usr/local/panda
 git clone git@github.com:newbamboo/panda.git
 mkdir /usr/local/panda/videos # Place for temp videos
+
+Configure Panda
+---------------
+
+Edit `config/panda_init.rb` and enter your AWS keys and other details.
 
 Create buckets, domains and queues
 ----------------------------------
@@ -31,15 +42,6 @@ Login to the console with `merb -i` and run the following, probably replacing na
     Panda::Setup.create_sdb_domain('panda_videos')
     Panda::Setup.create_sdb_domain('panda_profiles')
     Panda::Setup.create_sdb_domain('panda_users')
-
-Configure Panda
----------------
-
-Copy the `aws.rb.example` file in the config directory to `aws.rb` and change the names of the S3 bucket and SQS queue to the ones used in the previous step.
-
-If you used different names for the SimpleDB domains you'll need to edit the second line of the files in the app/models directory.
-
-Next edit the `merb.rb` file in the config directory, ensuring you at least create a new random API key.
 
 Create first admin user
 -----------------------

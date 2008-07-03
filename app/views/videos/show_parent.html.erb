@@ -13,6 +13,11 @@
   <dd><%= @video.duration_str %></dd>
 </dl>
 
+<ul class="actions">
+  <li><%= link_to "Add to queue", "/videos/#{@video.key}/add_to_queue" %></li>
+  <li><%= link_to "Delete video", "javascript:if(confirm('This will delete the original video file and all its encodings')) { window.location = '/videos/#{@video.key}/delete'}" %></li>
+</ul>
+
 <% @video.encodings.each do |enc| %>
 	<h3><a href="/videos/<%= enc.key %>"><%= enc.profile_title %></a></h3>
 	

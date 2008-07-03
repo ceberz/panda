@@ -16,6 +16,19 @@ God.watch do |w|
       c.notify = 'admin'
     end
   end
+  
+  w.restart_if do |restart|
+    # Restart if not returning http success
+    restart.condition(:http_response_code) do |c|
+      c.interval = 5.seconds
+      c.host = 'localhost'
+      c.port = port
+      c.path = '/'
+      c.code_is_not = 200
+      c.timeout = 10.seconds
+      c.times = [2, 3] # 2 out of 3 intervals
+    end
+  end
 end
 
 God.watch do |w|
@@ -34,6 +47,19 @@ God.watch do |w|
       c.interval = 10.seconds
       c.running = false
       c.notify = 'admin'
+    end
+  end
+  
+  w.restart_if do |restart|
+    # Restart if not returning http success
+    restart.condition(:http_response_code) do |c|
+      c.interval = 5.seconds
+      c.host = 'localhost'
+      c.port = port
+      c.path = '/'
+      c.code_is_not = 200
+      c.timeout = 10.seconds
+      c.times = [2, 3] # 2 out of 3 intervals
     end
   end
 end
