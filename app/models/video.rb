@@ -198,6 +198,12 @@ class Video < SimpleDB::Base
   end
   
   def add_to_queue
+    # Die if there's no profiles!
+    if Profile.query.empty?
+      Merb.logger.error "There are no encoding profiles!"
+      return nil
+    end
+    
     # TODO: Allow manual selection of encoding profiles used in both form and api
     # For now we will just encode to all available profiles
     Profile.query.each do |p|

@@ -139,6 +139,8 @@ class Videos < Application
     Merb.logger.info(params.to_yaml)
   end
   
+  def add_to_queue
+  
 private
 
   def render_error(msg)
