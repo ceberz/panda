@@ -277,6 +277,29 @@ class Video < SimpleDB::Base
     }
   end
   
+  # TODO: Use notifications daemon
+  def send_status
+    url = Panda::Config[:state_update_url].gsub(/\$id/,self.key)
+    params = {"video" => self.show_response.to_yaml}
+    
+    Merb.logger.info "Sending status update of video##{self.key} to #{url}"
+    
+    begin
+      uri = URI.parse(url)
+      http = Net::HTTP.new(uri.host, uri.port)
+      # result = Net::HTTP.get_response(URI.parse(url))
+      
+      req = Net::HTTP::Post.new(uri.path)
+      req.form_data = params
+      response = http.request(req)
+      
+      Merb.logger.info "--> #{response.code} #{response.message} (#{response.body.length})"
+    rescue
+      Merb.logger.info "Couldn't connect to #{url}"
+      # TODO: Send back a nice error if we can't connect to the client
+    end
+  end
+  
   # Encoding
   # ========
   
@@ -436,6 +459,7 @@ class Video < SimpleDB::Base
       # end
     end
 
+    self.send_status
     Merb.logger.info "All encodings complete!"
     Merb.logger.info "Complete!"
     # FileUtils.rm self.tmp_filepath
