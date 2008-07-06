@@ -75,6 +75,10 @@ class Video < SimpleDB::Base
     Panda::Config[:upload_redirect_url].gsub(/\$id/,self.key)
   end
   
+  def state_update_url
+    Panda::Config[:state_update_url].gsub(/\$id/,self.key)
+  end
+  
   def duration_str
     s = (self.duration.to_i || 0) / 1000
     "#{sprintf("%02d", s/60)}:#{sprintf("%02d", s%60)}"
@@ -85,11 +89,11 @@ class Video < SimpleDB::Base
   end
   
   def video_bitrate_in_bits
-    self.video_bitrate * 1024
+    self.video_bitrate.to_i * 1024
   end
   
   def audio_bitrate_in_bits
-    self.audio_bitrate * 1024
+    self.audio_bitrate.to_i * 1024
   end
   
   def screenshot
@@ -123,6 +127,7 @@ class Video < SimpleDB::Base
   end
   
   def embed_html
+    return nil unless self.encoding?
     %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}&image=#{self.screenshot_url}" />)
   end
   
@@ -142,13 +147,15 @@ class Video < SimpleDB::Base
   def fetch_from_s3
     begin
       retryable(:tries => 5) do
-        open(self.tmp_filepath, 'w') do |file|
+        File.open(self.tmp_filepath, 'w') do |file|
           Merb.logger.info "fetch_from_s3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
       end
     rescue
       raise
+    else
+      true
     end
   end
   
@@ -168,6 +175,8 @@ class Video < SimpleDB::Base
       end
     rescue
       raise
+    else
+      true
     end
   end
   
@@ -183,6 +192,7 @@ class Video < SimpleDB::Base
   
   def valid?
     raise NotValid unless self.empty?
+    return true
   end
   
   def read_metadata
@@ -295,15 +305,14 @@ class Video < SimpleDB::Base
   
   # TODO: Use notifications daemon
   def send_status
-    url = Panda::Config[:state_update_url].gsub(/\$id/,self.key)
     params = {"video" => self.show_response.to_yaml}
     
-    Merb.logger.info "Sending status update of video##{self.key} to #{url}"
+    Merb.logger.info "Sending status update of video##{self.key} to #{state_update_url}"
     
     begin
-      uri = URI.parse(url)
+      uri = URI.parse(state_update_url)
       http = Net::HTTP.new(uri.host, uri.port)
-      # result = Net::HTTP.get_response(URI.parse(url))
+      # result = Net::HTTP.get_response(URI.parse(state_update_url))
       
       req = Net::HTTP::Post.new(uri.path)
       req.form_data = params
@@ -311,7 +320,7 @@ class Video < SimpleDB::Base
       
       Merb.logger.info "--> #{response.code} #{response.message} (#{response.body.length})"
     rescue
-      Merb.logger.info "Couldn't connect to #{url}"
+      Merb.logger.info "Couldn't connect to #{state_update_url}"
       # TODO: Send back a nice error if we can't connect to the client
     end
   end
