@@ -20,7 +20,7 @@ SQS (http://sqs.rubyforge.org/)
 S3 (http://amazon.rubyforge.org/)
 SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
 
-gem install merb merb_helpers RubyInline amazon_sdb sqs
+gem install merb merb_helpers activesupport RubyInline amazon_sdb sqs
 
 Other deps
 ----------

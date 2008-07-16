@@ -19,9 +19,10 @@ Bin is /usr/local/nginx/sbin/nginx
 Grab Panda
 ----------
 
-cd /usr/local/panda
-git clone git@github.com:newbamboo/panda.git
-mkdir /usr/local/panda/videos # Place for temp videos
+cd /usr/local/www
+git clone git://github.com/newbamboo/panda.git
+mkdir /usr/local/panda/www/videos # Place for temp videos
+mkdir /usr/local/panda/www/log
 
 Configure Panda
 ---------------
@@ -61,9 +62,18 @@ Create an encoding profile
 
     Profile.create!(:title => "Flash video HI",  :container => "flv", :video_bitrate => 400, :audio_bitrate => 48, :width => 480, :height => 360, :fps => 24, :position => 1, :player => "flash")
     
-(FIX) Start Panda
------------------
+Configure Nginx
+---------------
 
-    /etc/init.d/nginx stop
+Edit your Nginx config as needed. The default config symlinks to `/usr/local/nginx/conf/nginx-panda.conf` and is setup to talk to Merb on port 4001.
+
+Start Panda
+-----------
+
+Start God and load the Panda config.
+
+    god
+    god load /usr/local/www/panda/panda.god
+
     cd /usr/local/www/panda
-    merb -p 80
+    merb

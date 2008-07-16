@@ -1,6 +1,6 @@
 God.watch do |w|
   w.name = "panda"
-  current_path  = "/var/www/panda"
+  current_path  = "/usr/local/www/panda"
   port = 4001
   w.start = "/bin/bash -c 'cd #{current_path}; merb -d -p #{port} -e production'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
@@ -33,7 +33,7 @@ end
 
 God.watch do |w|
   w.name = "encoder"
-  current_path  = "/var/www/panda"
+  current_path  = "/usr/local/www/panda"
   port = 4091
   w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/encoder.rb -d -p #{port} -e production'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"

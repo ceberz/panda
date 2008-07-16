@@ -8,3 +8,5 @@ panda_init.rb
 videos/*
 panda_*.god
 panda_nginx.conf
+log/*
+videos/*
