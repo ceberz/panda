@@ -53,7 +53,7 @@ function objToString(o) {
     <div id="error"></div>
     
 	<div id="uploader">
-		<form id="upload" enctype="multipart/form-data" action="/videos/<%= params[:id] %>/upload<%= ?X-Progress-ID=#{params[:id]} %>" method="post">
+		<form id="upload" enctype="multipart/form-data" action="/videos/<%= params[:id] %>/upload?X-Progress-ID=<%= params[:id] %>" method="post">
 			<input name="file" type="file" />
 			<input name="iframe" type="hidden" value="true" />
 			<input type="submit" value="Upload" />
