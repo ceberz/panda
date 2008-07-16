@@ -23,7 +23,7 @@ God.watch do |w|
       c.interval = 5.seconds
       c.host = '127.0.0.1'
       c.port = port
-      c.path = '/'
+      c.path = '/login'
       c.code_is_not = 200
       c.timeout = 10.seconds
       c.times = [2, 3] # 2 out of 3 intervals
