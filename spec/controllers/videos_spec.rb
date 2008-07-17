@@ -66,16 +66,6 @@ describe Videos, "upload action" do
     end
   end
   
-  # def setup_video
-  #   @video.should_receive(:filename=).with("123.avi")
-  #   @video.should_receive(:empty?).and_return(true)
-  #   @video.should_receive(:save_metadata).with({:metadata => :here})
-  #   @video.should_receive(:save)
-  #   
-  #   @video.should_receive(:add_encodings)
-  #   @video.should_receive(:add_to_queue).and_return(OpenStruct.new(:id => 999))
-  # end
-  
   it "should process valid video" do
     @video.should_receive(:process).and_return(true)
     @video.should_receive(:status=).with("original")
@@ -83,6 +73,12 @@ describe Videos, "upload action" do
     post_video
     @controller.status.should == 500
     @controller.should redirect_to("http://localhost:4000/videos/abc/done")
+  end
+  
+  it "should raise Video::NoFileSubmitted and return 404 if no file parameter is posted" do
+    post("/videos/abc/upload.html", {:iframe => "true"})
+    status.should == 404
+    body.should match(/NoFileSubmitted/)
   end
   
   # it "should return 200, add video to queue and set location header" do
@@ -103,10 +99,6 @@ describe Videos, "upload action" do
   #   post("/videos/123/uploaded.yaml", {:filename => "vid.avi", :metadata => {:metadata => :here}.to_yaml})
   #   status.should == 200
   #   headers['Location'].should_not == "http://mysite.com/videos/done"
-  # end
-  
-  # it "should raise Video::NoFileSubmitted if no file parameter is posted" do
-  #   
   # end
   
   # it "should return 404 if video is not empty" do
