@@ -35,7 +35,7 @@ God.watch do |w|
   w.name = "encoder"
   current_path  = "/usr/local/www/panda"
   port = 4091
-  w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/encoder.rb -d -p #{port} -e production'"
+  w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/encoder.rb -d -p #{port} -e encoder'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
   w.pid_file = File.join(current_path, "log/merb.#{port}.pid")
   w.behavior(:clean_pid_file)

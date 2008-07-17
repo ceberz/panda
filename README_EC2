@@ -3,12 +3,7 @@ Panda on EC2
 
 Launch the AMI
 --------------
-ec2-run-instances ami-5538dd3c -k pv-keypair
-
-(FIX) Install stuff which will be in the next AMI
--------------------------------------------
-
-See README
+    ec2-run-instances ami-468e6a2f -k pv-keypair
 
 Nginx
 -----
@@ -19,15 +14,19 @@ Bin is /usr/local/nginx/sbin/nginx
 Grab Panda
 ----------
 
-cd /usr/local/www
-git clone git://github.com/newbamboo/panda.git
-mkdir /usr/local/panda/www/videos # Place for temp videos
-mkdir /usr/local/panda/www/log
+    cd /usr/local/www
+    git clone git://github.com/newbamboo/panda.git
+    mkdir /usr/local/www/panda/videos # Place for temp videos
+    mkdir /usr/local/www/panda/log
 
 Configure Panda
 ---------------
 
-Edit `config/panda_init.rb` and enter your AWS keys and other details.
+Copy the example config file and enter your AWS keys and other details.
+
+    cd /usr/local/www/panda/config
+    cp panda_init.rb.example panda_init.rb
+    vi panda_init.rb
 
 Create buckets, domains and queues
 ----------------------------------
@@ -67,13 +66,27 @@ Configure Nginx
 
 Edit your Nginx config as needed. The default config symlinks to `/usr/local/nginx/conf/nginx-panda.conf` and is setup to talk to Merb on port 4001.
 
+    /etc/init.d/nginx restart
+
 Start Panda
 -----------
 
-Start God and load the Panda config.
+You can start Merb directly:
+
+    cd /usr/local/www/panda
+    merb -p 4001
+
+The encoder can be run with 
+
+    cd /usr/local/www/panda
+    merb -r lib/encoder.rb -p 5001 -e encoder
+
+Using God with the supplied config is the best method to control Merb and the encoder:
 
     god
     god load /usr/local/www/panda/panda.god
 
-    cd /usr/local/www/panda
-    merb
+Upload some videos!
+-------------------
+
+Visit http://ec2-instance-name-123-456.compute-1.amazonaws.com and login with the detail of the user you created earlier!
