@@ -49,7 +49,9 @@ describe Videos, "upload action" do
     end
     
     class S3VideoObject; end
-    
+  end
+  
+  def setup_video
     # First part of action
     
     Video.stub!(:find).with("abc").and_return(@video)
@@ -61,9 +63,8 @@ describe Videos, "upload action" do
   end
   
   def post_video(format=:html)
-    multipart_post("/videos/abc/upload.#{format}", {:file => File.open(File.join( File.dirname(__FILE__), "video.avi"))}) do |controller|
-      @controller = controller
-    end
+    setup_video
+    @c = multipart_post("/videos/abc/upload.#{format}", {:file => File.open(File.join( File.dirname(__FILE__), "video.avi"))})
   end
   
   it "should process valid video" do
@@ -71,14 +72,14 @@ describe Videos, "upload action" do
     @video.should_receive(:status=).with("original")
     @video.should_receive(:save)    
     post_video
-    @controller.status.should == 500
-    @controller.should redirect_to("http://localhost:4000/videos/abc/done")
+    @c.status.should == 302
+    @c.should redirect_to("http://localhost:4000/videos/abc/done")
   end
   
   it "should raise Video::NoFileSubmitted and return 404 if no file parameter is posted" do
-    post("/videos/abc/upload.html", {:iframe => "true"})
-    status.should == 404
-    body.should match(/NoFileSubmitted/)
+    @c = post("/videos/abc/upload.html", {:iframe => "true"})
+    # @status.should == 500
+    @c.body.should match(/NoFileSubmitted/)
   end
   
   # it "should return 200, add video to queue and set location header" do

@@ -1,7 +1,7 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
   before :require_login, :only => [:index, :show, :destroy, :new, :add_to_queue]
-  before :set_video, :only => [:show, :destroy, :form, :upload, :done, :state, :add_to_queue]
+  before :set_video, :only => [:show, :destroy, :form, :done, :state, :add_to_queue]
 
   def index
     provides :html, :xml, :yaml
@@ -92,7 +92,7 @@ class Videos < Application
   def upload
     provides :html#, :xml, :yaml, :json
     
-    # begin
+    begin
       raise Video::NoFileSubmitted if !params[:file] || params[:file].blank?
       @video = Video.find(params[:id])
       @video.filename = @video.key + File.extname(params[:file][:filename])
@@ -107,13 +107,13 @@ class Videos < Application
     # rescue Video::NotValid # Video object is not empty. It's likely a video has already been uploaded for this object.
     #   # status = 404
     #   render_error($!.to_s.gsub(/Video::/,""))
-    # rescue Video::VideoError
-    #   # status = 500
-    #   render_error($!.to_s.gsub(/Video::/,""))
+    rescue Video::VideoError
+      status = 500
+      render_error($!.to_s.gsub(/Video::/,""))
     # rescue
-    #   # status = 500
-    #   # render_error("InternalServerError") # TODO: Use this generic error in production
-    # else
+      # status = 500
+      # render_error("InternalServerError") # TODO: Use this generic error in production
+    else
       case content_type
       when :html  
         # Special internal Panda case: textarea hack to get around the fact that the form is submitted with a hidden iframe and thus the response is rendered in the iframe
@@ -123,7 +123,7 @@ class Videos < Application
           redirect @video.upload_redirect_url
         end
       end
-    # end
+    end
   end
   
   # NOTE: Default done page people see after successfully uploading a video. Edit init.rb and set upload_redirect_url to be somewhere else.
@@ -146,7 +146,7 @@ class Videos < Application
 private
 
   def render_error(msg)
-    Merb.logger :error, "#{params[:id]}: (500 returned to client) #{msg}"
+    Merb.logger.error "#{params[:id]}: (500 returned to client) #{msg}"
 
     case content_type
     when :html
