@@ -62,24 +62,41 @@ describe Videos, "upload action" do
     # Next @video.process is called, this is where the interesting stuff happens, errors raised etc...
   end
   
-  def post_video(format=:html)
-    setup_video
-    @c = multipart_post("/videos/abc/upload.#{format}", {:file => File.open(File.join( File.dirname(__FILE__), "video.avi"))})
+  def video_post_params
+    ["/videos/abc/upload.html", {:file => File.open(File.join( File.dirname(__FILE__), "video.avi"))}]
   end
   
   it "should process valid video" do
+    setup_video
+    
     @video.should_receive(:process).and_return(true)
     @video.should_receive(:status=).with("original")
-    @video.should_receive(:save)    
-    post_video
-    @c.status.should == 302
-    @c.should redirect_to("http://localhost:4000/videos/abc/done")
+    @video.should_receive(:save)   
+     
+    @c = multipart_post(*video_post_params) do |controller|
+      controller.should_receive(:redirect).with("http://localhost:4000/videos/abc/done")
+    end
   end
   
+  # Videos::NoFileSubmitted
+  
   it "should raise Video::NoFileSubmitted and return 404 if no file parameter is posted" do
-    @c = post("/videos/abc/upload.html", {:iframe => "true"})
-    # @status.should == 500
+    @c = post("/videos/abc/upload.html")
+    @c.status.should == 500
     @c.body.should match(/NoFileSubmitted/)
+  end
+  
+  # Video::NotValid / 404
+  
+  it "should return 404 when processing fails with Video::NotValid" do 
+    @video.should_receive(:process).and_raise(Video::NotValid)
+    
+    @c = multipart_post(*video_post_params) do |controller|
+      controller.should_receive(:render).with(:template => "/exceptions/internal_server_error")
+    end
+    
+    @c.body.should match(/NotValid/)
+    status.should == 404
   end
   
   # it "should return 200, add video to queue and set location header" do
