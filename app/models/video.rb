@@ -372,7 +372,7 @@ class Video < SimpleDB::Base
     Merb.logger.info "Beginning encoding of video #{self.parent.key}"
     Merb.logger.info self.parent.attributes.to_h.to_yaml
     Merb.logger.info "Grabbing raw video from S3"
-    self.parent.parent.fetch_from_s3
+    self.parent.fetch_from_s3
     encoding = self
 
       # self.reload!
