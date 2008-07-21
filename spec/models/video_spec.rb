@@ -2,9 +2,7 @@ require File.join( File.dirname(__FILE__), "..", "spec_helper" )
 
 describe Video do
   before :each do
-    @video = Video.new
-    @video.key = 'abc'
-    @video.filename = 'abc.mov'
+    @video = mock_video
     
     Panda::Config.use do |p|
       p[:tmp_video_dir] = '/tmp'
@@ -107,6 +105,7 @@ describe Video do
   end
   
   it "should return nil resolution if there is no width" do
+    @video.width = nil
     @video.resolution.should be_nil
   end
   
@@ -229,7 +228,18 @@ describe Video do
   
   # def read_metadata
   
-  # def add_to_queue
+  it "should create profiles when add_to_queue is called" do
+    profile = mock_profile
+    Profile.should_receive(:query).twice.and_return([mock_profile])
+    Video.should_receive(:query).with("['parent' = 'abc'] intersection ['profile' = 'profile1']").and_return([])
+    # We didn't find a video, so the method will create one now
+    
+    encoding = Video.new
+    encoding.should_receive(:save)
+    Video.should_receive(:new).and_return(encoding)
+    
+    @video.add_to_queue
+  end
 
   # def show_response
   
@@ -280,26 +290,57 @@ describe Video do
   # 
   # end
 #   
-# private
-#   
-#   def mock_encoding(attrs={})
-#     enc = Video.new
-#     {
-#       :status => 'queued',
-#       :key => 'xyz',
-#       :filename => 'xyz.flv',
-#       :container => 'flv',
-#       :player => 'flash',
-#       :video_codec => '',
-#       :video_bitrate => 400, 
-#       :fps => 24,
-#       :audio_codec => '', 
-#       :audio_bitrate => 48, 
-#       :width => 480,
-#       :height => 360
-#     }.merge(attrs).each do |k,v|
-#       enc.send("#{k}=",v)
-#     end
-#     return enc
-#   end
+  private
+  
+    def mock_profile
+      Profile.new("profile1", 
+        {
+          :title => "Flash video HI", 
+          :container => "flv", 
+          :video_bitrate => 400, 
+          :audio_bitrate => 48, 
+          :width => 480, 
+          :height => 360, 
+          :fps => 24, 
+          :position => 1, 
+          :player => "flash"
+        }
+      )
+    end
+  
+  def mock_video(attrs={})
+    enc = Video.new("abc", 
+      {
+        :status => 'original',
+        :filename => 'abc.mov',
+        :original_filename => 'original_filename.mov',
+        :duration => 100,
+        :video_codec => '',
+        :video_bitrate => 400, 
+        :fps => 24,
+        :audio_codec => '', 
+        :audio_bitrate => 48, 
+        :width => 480,
+        :height => 360
+      }
+    )
+  end
+  
+  # def mock_encoding(attrs={})
+  #   enc = Video.new('xyz', 
+  #     {
+  #       :status => 'queued',
+  #       :filename => 'xyz.flv',
+  #       :container => 'flv',
+  #       :player => 'flash',
+  #       :video_codec => '',
+  #       :video_bitrate => 400, 
+  #       :fps => 24,
+  #       :audio_codec => '', 
+  #       :audio_bitrate => 48, 
+  #       :width => 480,
+  #       :height => 360
+  #     }
+  #   )
+  # end
 end

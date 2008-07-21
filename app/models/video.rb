@@ -1,6 +1,6 @@
 class Video < SimpleDB::Base
   set_domain Panda::Config[:sdb_videos_domain]
-  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
+  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :queued_at, :started_encoding_at, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -217,6 +217,7 @@ class Video < SimpleDB::Base
     # raise FormatNotRecognised if self.width.nil? or self.height.nil? # Little final check we actually have some usable video
   end
   
+  # TODO: Breakout Profile adding into a different method
   def add_to_queue
     # Die if there's no profiles!
     if Profile.query.empty?
@@ -250,9 +251,6 @@ class Video < SimpleDB::Base
         encoding.save
       end
     end
-    
-    # Add job to queue
-    SQS.get_queue(:name => Panda::Config[:sqs_encoding_queue]).send_message(self.key)
   end
   
   # Exceptions
