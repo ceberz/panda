@@ -142,6 +142,7 @@ class Video < SimpleDB::Base
     begin
       retryable(:tries => 5) do
         S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
+        sleep 1
       end
     rescue
       raise
@@ -155,6 +156,7 @@ class Video < SimpleDB::Base
           Merb.logger.info "fetch_from_s3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
+        sleep 1
       end
     rescue
       raise
