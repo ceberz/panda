@@ -373,10 +373,10 @@ class Video < SimpleDB::Base
     Merb.logger.info "No encodings for this video!" if self.encodings.empty?
     
     self.encodings.each do |encoding|
-      encoding.reload!
+      # encoding.reload!
       begun_encoding = Time.now
       Merb.logger.info "Beginning encoding:"
-      Merb.logger.info encoding.attributes.to_h.to_yaml
+      # Merb.logger.info encoding.attributes.to_h.to_yaml
 
       Merb.logger.info "Encoding #{encoding.key}"
       

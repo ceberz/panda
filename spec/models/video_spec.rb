@@ -227,7 +227,79 @@ describe Video do
     @video.valid?.should be_true
   end
   
+  # def read_metadata
+  
+  # def add_to_queue
+
+  # def show_response
+  
   it "should return correct API create response hash" do
     @video.create_response.should == {:video => {:id => 'abc'}}
   end
+  
+  # def send_status
+  
+  # Encoding
+  # ========
+  
+  # def ffmpeg_resolution_and_padding(inspector)
+  
+  # it "should run correct encoding commands for a valid video" do
+  #   encoding = mock_encoding
+  #   @video.should_receive(:fetch_from_s3)
+  #   @video.should_receive(:encodings).and_return([encoding])
+  #   encoding.should_receive(:status=).with("processing")
+  #   encoding.should_receive(:save)
+  #   
+  #   inspector = mock(RVideo::Inspector)
+  #   inspector.should_receive(:width).and_return(480)
+  #   inspector.should_receive(:height).and_return(360)
+  #   RVideo::Inspector.should_receive(:new).with(:file => @video.tmp_filepath).and_return(inspector)
+  #   
+  #   transcoder = mock(RVideo::Transcoder)
+  #   transcoder.should_receive(:execute).with(
+  #     "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$",
+  #     {
+  #       :input_file => '/tmp/abc.mov',
+  #       :output_file => '/tmp/xyz.flv', 
+  #       :container => 'flv',
+  #       :video_bitrate => 400,
+  #       :video_bitrate_in_bits => (400*1024).to_s, 
+  #       :fps => 24,
+  #       :audio_codec => '', 
+  #       :audio_bitrate => 48 
+  #       :audio_bitrate_in_bits => (48*1024).to_s, 
+  #       :audio_sample_rate => '', 
+  #       :resolution => '480x360',
+  #       :resolution_and_padding => "-s 480x360 " # encoding.ffmpeg_resolution_and_padding
+  #     }
+  #   )
+  #   RVideo::Transcoder.should_receive(:new).and_return(transcoder)
+  #   
+  #   @video.should_receive(:capture_thumbnail_and_upload_to_s3)
+  # 
+  # end
+#   
+# private
+#   
+#   def mock_encoding(attrs={})
+#     enc = Video.new
+#     {
+#       :status => 'queued',
+#       :key => 'xyz',
+#       :filename => 'xyz.flv',
+#       :container => 'flv',
+#       :player => 'flash',
+#       :video_codec => '',
+#       :video_bitrate => 400, 
+#       :fps => 24,
+#       :audio_codec => '', 
+#       :audio_bitrate => 48, 
+#       :width => 480,
+#       :height => 360
+#     }.merge(attrs).each do |k,v|
+#       enc.send("#{k}=",v)
+#     end
+#     return enc
+#   end
 end
