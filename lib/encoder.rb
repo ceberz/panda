@@ -7,6 +7,7 @@ loop do
   Merb.logger.info "Checking for messages... #{Time.now}"
   if video = Video.next_job
     Merb.logger.info "Got a message!"
+    Merb.logger.info video.show_response.to_yaml
 
     begin
       video.encode
