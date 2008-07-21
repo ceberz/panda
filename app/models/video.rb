@@ -365,7 +365,7 @@ class Video < SimpleDB::Base
     return opts_string
   end
   
-  def encode_just_encoding
+  def encode
     parent_obj = self.parent_video
     Merb.logger.info "=========================================================="
     Merb.logger.info Time.now.to_s
