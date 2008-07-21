@@ -13,7 +13,7 @@ loop do
     rescue
       Merb.logger.info "ERROR ENCODING!"
     end
-    
+  end
   # log.warn "Panda returned an unexpected response"
 end
 
