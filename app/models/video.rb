@@ -37,6 +37,10 @@ class Video < SimpleDB::Base
     self.query("['status' = 'processing' or 'status' = 'queued']", :load_attrs => true)
   end
   
+  def self.next_job
+    self.query("['status' = 'queued']").first
+  end
+  
   # def self.recently_completed_videos
   #   self.query("['status' = 'success']")
   # end

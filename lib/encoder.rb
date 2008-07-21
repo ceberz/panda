@@ -1,66 +1,18 @@
-# WARNING: This code is procedural bollocks!
 # merb -r "panda/lib/encoder.rb"
 
-# Set hostname should probably be in the AMI startup script
-# %x(set_hostname)
-
-# if MERB_ENV == 'production'
-#   PANDA_HOME = "/mnt/panda_encoder"
-#   PANDA_RAW_FILES = "/mnt/files/raw"
-#   PANDA_ENCODED_FILES = "/mnt/files/encoded"
-#   PANDA_DOMAIN = "hq.pandastream.com"
-#   PANDA_LOG_SERVER = "127.0.0.1"
-#   PANDA_PORT = 80
-#   HOSTNAME = %x(hostname).strip
-#   AWS_CONNECT_FILE = '/aws_connect'
-# else  
-#   PANDA_RAW_FILES = File.join(File.dirname(__FILE__), "..","files","raw")
-#   PANDA_ENCODED_FILES = File.join(File.dirname(__FILE__), "..","files","encoded")
-#   PANDA_DOMAIN = "127.0.0.1"
-#   PANDA_LOG_SERVER = "127.0.0.1"
-#   PANDA_PORT = 4000
-#   HOSTNAME = "localhost"
-#   AWS_CONNECT_FILE = File.dirname(__FILE__) + '/../../aws_connect'
-# end
-
-# Local detailed logger
-
-# require 'log4r'
-# include Log4r
-# 
-# log = Logger.new 'encqlog'
-# fileo = FileOutputter.new('fileOutputter', :filename => File.join(File.dirname(__FILE__), 'encoder.log'), :trunc => false)
-# log.add fileo
-# log.level = Log4r::DEBUG
-
 Merb.logger.info 'Encoder awake!'
-
-# New remote logger
-
-# require 'rog'
-# Rog.prefix = "Encoder##{HOSTNAME}"
-# Rog.host = PANDA_LOG_SERVER
-# Rog.port = 3333
-# Merb.logger.info "Panda Encoder app awake"
-q = SQS.get_queue(:name => Panda::Config[:sqs_encoding_queue])
 
 loop do
   sleep 3
   Merb.logger.info "Checking for messages... #{Time.now}"
-  next unless m = q.receive_message
-  
-  Merb.logger.info "Got a message!"
-  key = m.body
-  Merb.logger.info key
-  m.delete
-  # Maybe we should encase this in a begin rescue?
-  begin
-    video = Video.find(key)
-  rescue Amazon::SDB::RecordNotFoundError
-    Merb.logger.info "Couldn't find video item with key #{key}. Discarding message."
-  else
-    job_result = video.encode
-  end
+  if video = Video.next_job
+    Merb.logger.info "Got a message!"
+
+    begin
+      video.encode
+    rescue
+      Merb.logger.info "ERROR ENCODING!"
+    end
     
   # log.warn "Panda returned an unexpected response"
 end

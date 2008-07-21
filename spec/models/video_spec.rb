@@ -49,6 +49,11 @@ describe Video do
     Video.queued_encodings
   end
   
+  def next_job
+    Video.should_receive(:query).with("['status' = 'queued']").and_return([])
+    Video.next_job
+  end
+  
   it "parent_video" do
     @video.parent = 'xyz'
     Video.should_receive(:find).with('xyz')
