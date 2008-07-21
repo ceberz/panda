@@ -101,18 +101,18 @@ class Videos < Application
       @video.process
       @video.status = "original"
       @video.save
-    # rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
-    #   # status = 404
-    #   render_error($!.to_s.gsub(/Amazon::SDB::/,""))
-    # rescue Video::NotValid # Video object is not empty. It's likely a video has already been uploaded for this object.
-    #   # status = 404
-    #   render_error($!.to_s.gsub(/Video::/,""))
-    rescue Video::VideoError
-      status = 500
+    rescue Amazon::SDB::RecordNotFoundError # No empty video object exists
+      self.status = 404
+      render_error($!.to_s.gsub(/Amazon::SDB::/,""))
+    rescue Video::NotValid # Video object is not empty. It's likely a video has already been uploaded for this object.
+      self.status = 404
       render_error($!.to_s.gsub(/Video::/,""))
-    # rescue
-      # status = 500
-      # render_error("InternalServerError") # TODO: Use this generic error in production
+    rescue Video::VideoError
+      self.status = 500
+      render_error($!.to_s.gsub(/Video::/,""))
+    rescue
+      self.status = 500
+      render_error("InternalServerError") # TODO: Use this generic error in production
     else
       case content_type
       when :html  
@@ -153,7 +153,8 @@ private
       if params[:iframe] == "true"
         "<textarea>" + {:error => msg}.to_json + "</textarea>"
       else
-        render(:template => "/exceptions/internal_server_error") # TODO: Why is :action setting 404 instead of 500?!?!
+        @exception = msg
+        render(:template => "/exceptions/video_exception") # TODO: Why is :action setting 404 instead of 500?!?!
       end
     when :xml
       {:error => msg}.to_simple_xml

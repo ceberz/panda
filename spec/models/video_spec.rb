@@ -219,7 +219,7 @@ describe Video do
   
   it "valid? should raise NotValid if video is not empty" do
     @video.status = 'original'
-    @video.valid?.should raise_error(Video::NotValid)
+    lambda {@video.valid?}.should raise_error(Video::NotValid)
   end
   
   it "valid? should return true if video is empty" do

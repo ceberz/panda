@@ -49,6 +49,9 @@ describe Videos, "upload action" do
     end
     
     class S3VideoObject; end
+    
+    @video_upload_url = "/videos/abc/upload.html"
+    @video_upload_params = {:file => File.open(File.join( File.dirname(__FILE__), "video.avi"))}
   end
   
   def setup_video
@@ -62,41 +65,61 @@ describe Videos, "upload action" do
     # Next @video.process is called, this is where the interesting stuff happens, errors raised etc...
   end
   
-  def video_post_params
-    ["/videos/abc/upload.html", {:file => File.open(File.join( File.dirname(__FILE__), "video.avi"))}]
-  end
-  
   it "should process valid video" do
     setup_video
-    
     @video.should_receive(:process).and_return(true)
     @video.should_receive(:status=).with("original")
     @video.should_receive(:save)   
      
-    @c = multipart_post(*video_post_params) do |controller|
+    @c = multipart_post(@video_upload_url, @video_upload_params) do |controller|
       controller.should_receive(:redirect).with("http://localhost:4000/videos/abc/done")
     end
-  end
-  
-  # Videos::NoFileSubmitted
-  
-  it "should raise Video::NoFileSubmitted and return 404 if no file parameter is posted" do
-    @c = post("/videos/abc/upload.html")
-    @c.status.should == 500
-    @c.body.should match(/NoFileSubmitted/)
   end
   
   # Video::NotValid / 404
   
   it "should return 404 when processing fails with Video::NotValid" do 
+    setup_video
     @video.should_receive(:process).and_raise(Video::NotValid)
-    
-    @c = multipart_post(*video_post_params) do |controller|
-      controller.should_receive(:render).with(:template => "/exceptions/internal_server_error")
-    end
-    
+    @c = multipart_post(@video_upload_url, @video_upload_params)
     @c.body.should match(/NotValid/)
-    status.should == 404
+    @c.status.should == 404
+  end
+  
+  # Amazon::SDB::RecordNotFoundError
+  
+  it "should raise RecordNotFoundError and return 404 when no record is found in SimpleDB" do 
+    Video.stub!(:find).with("abc").and_raise(Amazon::SDB::RecordNotFoundError)
+    @c = multipart_post(@video_upload_url, @video_upload_params)
+    @c.body.should match(/RecordNotFoundError/)
+    @c.status.should == 404
+  end
+  
+  # Videos::NoFileSubmitted
+  
+  it "should raise Video::NoFileSubmitted and return 500 if no file parameter is posted" do
+    @c = post("/videos/abc/upload.html")
+    @c.body.should match(/NoFileSubmitted/)
+    @c.status.should == 500
+  end
+  
+  # InternalServerError
+  
+  it "should raise InternalServerError and return 500 if an unknown exception is raised" do
+    Video.stub!(:find).with("abc").and_raise(RuntimeError)
+    @c = multipart_post(@video_upload_url, @video_upload_params)
+    @c.body.should match(/InternalServerError/)
+    @c.status.should == 500
+  end
+  
+  # Test iframe=true option with InternalServerError
+  
+  it "should reutrn error json inside a <textarea>" do
+    Video.stub!(:find).with("abc").and_raise(RuntimeError)
+    @c = multipart_post(@video_upload_url, @video_upload_params.merge({:iframe => true}))
+    puts @c.body
+    @c.body.should == %(<textarea>{"error": "InternalServerError"}</textarea>)
+    @c.status.should == 500
   end
   
   # it "should return 200, add video to queue and set location header" do
