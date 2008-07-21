@@ -366,13 +366,14 @@ class Video < SimpleDB::Base
   end
   
   def encode_just_encoding
+    parent_obj = self.parent_video
     Merb.logger.info "=========================================================="
     Merb.logger.info Time.now.to_s
     Merb.logger.info "=========================================================="
-    Merb.logger.info "Beginning encoding of video #{self.parent_video.key}"
-    Merb.logger.info self.parent_video.attributes.to_h.to_yaml
+    Merb.logger.info "Beginning encoding of video #{parent_obj.key}"
+    Merb.logger.info parent_obj.attributes.to_h.to_yaml
     Merb.logger.info "Grabbing raw video from S3"
-    self.parent_video.fetch_from_s3
+    parent_obj.fetch_from_s3
     encoding = self
 
       # self.reload!
@@ -387,10 +388,10 @@ class Video < SimpleDB::Base
 
       # Encode video
       Merb.logger.info "Encoding video..."
-      inspector = RVideo::Inspector.new(:file => self.parent_video.tmp_filepath)
+      inspector = RVideo::Inspector.new(:file => parent_obj.tmp_filepath)
       transcoder = RVideo::Transcoder.new
 
-      recipe_options = {:input_file => self.parent_video.tmp_filepath, :output_file => self.tmp_filepath, 
+      recipe_options = {:input_file => parent_obj.tmp_filepath, :output_file => self.tmp_filepath, 
         :container => self.container, 
         :video_codec => self.video_codec,
         :video_bitrate_in_bits => self.video_bitrate_in_bits.to_s, 
@@ -403,7 +404,7 @@ class Video < SimpleDB::Base
         :resolution_and_padding => self.ffmpeg_resolution_and_padding(inspector)
         }
 
-      self.parent_video.capture_thumbnail_and_upload_to_s3
+      parent_obj.capture_thumbnail_and_upload_to_s3
 
       Merb.logger.info recipe_options.to_yaml
 
@@ -414,7 +415,7 @@ class Video < SimpleDB::Base
           transcoder.execute(recipe, recipe_options)
         elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
           # Just the video without audio
-          temp_video_output_file = "#{self.tmp_filepath}.temp.self.parent_video.mp4"
+          temp_video_output_file = "#{self.tmp_filepath}.temp.parent_obj.mp4"
           temp_audio_output_file = "#{self.tmp_filepath}.temp.audio.mp4"
           temp_audio_output_wav_file = "#{self.tmp_filepath}.temp.audio.wav"
 
@@ -488,10 +489,10 @@ class Video < SimpleDB::Base
       #   Merb.logger.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
       # end
 
-    # self.parent_video.send_status
+    # parent_obj.send_status
     Merb.logger.info "All encodings complete!"
     Merb.logger.info "Complete!"
-    # FileUtils.rm self.parent_video.tmp_filepath
+    # FileUtils.rm parent_obj.tmp_filepath
     return true
   end
   
