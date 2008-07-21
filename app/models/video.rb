@@ -364,61 +364,59 @@ class Video < SimpleDB::Base
 
     return opts_string
   end
-
-  def encode
+  
+  def encode_just_encoding
     Merb.logger.info "=========================================================="
     Merb.logger.info Time.now.to_s
     Merb.logger.info "=========================================================="
-    Merb.logger.info "Beginning encoding of video #{self.key}"
-    Merb.logger.info self.attributes.to_h.to_yaml
+    Merb.logger.info "Beginning encoding of video #{self.parent.key}"
+    Merb.logger.info self.parent.attributes.to_h.to_yaml
     Merb.logger.info "Grabbing raw video from S3"
-    self.fetch_from_s3
+    self.parent.parent.fetch_from_s3
+    encoding = self
 
-    Merb.logger.info "No encodings for this video!" if self.encodings.empty?
-    
-    self.encodings.each do |encoding|
-      # encoding.reload!
+      # self.reload!
       begun_encoding = Time.now
       Merb.logger.info "Beginning encoding:"
-      # Merb.logger.info encoding.attributes.to_h.to_yaml
+      # Merb.logger.info self.attributes.to_h.to_yaml
 
-      Merb.logger.info "Encoding #{encoding.key}"
-      
-      encoding.status = "processing"
-      encoding.save
+      Merb.logger.info "Encoding #{self.key}"
+
+      self.status = "processing"
+      self.save
 
       # Encode video
       Merb.logger.info "Encoding video..."
-      inspector = RVideo::Inspector.new(:file => self.tmp_filepath)
+      inspector = RVideo::Inspector.new(:file => self.parent.tmp_filepath)
       transcoder = RVideo::Transcoder.new
 
-      recipe_options = {:input_file => self.tmp_filepath, :output_file => encoding.tmp_filepath, 
-        :container => encoding.container, 
-        :video_codec => encoding.video_codec,
-        :video_bitrate_in_bits => encoding.video_bitrate_in_bits.to_s, 
-        :fps => encoding.fps,
-        :audio_codec => encoding.audio_codec.to_s, 
-        :audio_bitrate => encoding.audio_bitrate.to_s, 
-        :audio_bitrate_in_bits => encoding.audio_bitrate_in_bits.to_s, 
-        :audio_sample_rate => encoding.audio_sample_rate.to_s, 
-        :resolution => encoding.resolution,
-        :resolution_and_padding => encoding.ffmpeg_resolution_and_padding(inspector)
+      recipe_options = {:input_file => self.parent.tmp_filepath, :output_file => self.tmp_filepath, 
+        :container => self.container, 
+        :video_codec => self.video_codec,
+        :video_bitrate_in_bits => self.video_bitrate_in_bits.to_s, 
+        :fps => self.fps,
+        :audio_codec => self.audio_codec.to_s, 
+        :audio_bitrate => self.audio_bitrate.to_s, 
+        :audio_bitrate_in_bits => self.audio_bitrate_in_bits.to_s, 
+        :audio_sample_rate => self.audio_sample_rate.to_s, 
+        :resolution => self.resolution,
+        :resolution_and_padding => self.ffmpeg_resolution_and_padding(inspector)
         }
-        
-      self.capture_thumbnail_and_upload_to_s3
+
+      self.parent.capture_thumbnail_and_upload_to_s3
 
       Merb.logger.info recipe_options.to_yaml
 
       # begin
-        if encoding.container == "flv" and encoding.player == "flash"
+        if self.container == "flv" and self.player == "flash"
           recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
           recipe += "\nflvtool2 -U $output_file$"
           transcoder.execute(recipe, recipe_options)
-        elsif encoding.container == "mp4" and encoding.audio_codec == "aac" and encoding.player == "flash"
+        elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
           # Just the video without audio
-          temp_video_output_file = "#{encoding.tmp_filepath}.temp.self.mp4"
-          temp_audio_output_file = "#{encoding.tmp_filepath}.temp.audio.mp4"
-          temp_audio_output_wav_file = "#{encoding.tmp_filepath}.temp.audio.wav"
+          temp_video_output_file = "#{self.tmp_filepath}.temp.self.parent.mp4"
+          temp_audio_output_file = "#{self.tmp_filepath}.temp.audio.mp4"
+          temp_audio_output_wav_file = "#{self.tmp_filepath}.temp.audio.wav"
 
           recipe = "ffmpeg -i $input_file$ -an -vcodec libx264 -crf 28 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 22 -y $output_file$"
           recipe_audio_extraction = "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$"
@@ -437,64 +435,196 @@ class Video < SimpleDB::Base
             Merb.logger.info Time.now.to_s
 
             # Squash the audio and video together
-            FileUtils.rm(encoding.tmp_filepath) if File.exists?(encoding.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
-            %x(MP4Box -add #{temp_video_output_file}#video #{encoding.tmp_filepath})
-            %x(MP4Box -add #{temp_audio_output_file}#audio #{encoding.tmp_filepath})
+            FileUtils.rm(self.tmp_filepath) if File.exists?(self.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
+            %x(MP4Box -add #{temp_video_output_file}#video #{self.tmp_filepath})
+            %x(MP4Box -add #{temp_audio_output_file}#audio #{self.tmp_filepath})
 
             # Interleave meta data
-            %x(MP4Box -inter 500 #{encoding.tmp_filepath})
+            %x(MP4Box -inter 500 #{self.tmp_filepath})
             Merb.logger.info "Squashing done"
           else
             Merb.logger.info "This video does't have an audio stream"
-            FileUtils.mv(temp_video_output_file, encoding.tmp_filepath)
+            FileUtils.mv(temp_video_output_file, self.tmp_filepath)
           end
           Merb.logger.info Time.now.to_s
         else # Try straight ffmpeg encode
           recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
           transcoder.execute(recipe, recipe_options)
           # log.warn "Error: unknown encoding format given"
-          # Merb.logger.error "Couldn't encode #{encoding.key}. Unknown encoding format given."
+          # Merb.logger.error "Couldn't encode #{self.key}. Unknown encoding format given."
         end
 
         Merb.logger.info "Done encoding"
 
         # Now upload it to S3
-        if File.exists?(encoding.tmp_filepath)
-          Merb.logger.info "Success encoding #{encoding.filename}. Uploading to S3."
-          Merb.logger.info "Uploading #{encoding.filename}"
+        if File.exists?(self.tmp_filepath)
+          Merb.logger.info "Success encoding #{self.filename}. Uploading to S3."
+          Merb.logger.info "Uploading #{self.filename}"
 
-          encoding.upload_to_s3
-          encoding.capture_thumbnail_and_upload_to_s3
-          
-          FileUtils.rm encoding.tmp_filepath
+          self.upload_to_s3
+          self.capture_thumbnail_and_upload_to_s3
+
+          FileUtils.rm self.tmp_filepath
 
           Merb.logger.info "Done uploading"
 
           # Update the encoding data which will be returned to the server
-          encoding.status = "success"
-          encoding.set_encoded_at(Time.now)
+          self.status = "success"
+          self.set_encoded_at(Time.now)
         else
-          encoding.status = "error"
-          Merb.logger.info "Couldn't upload #{encoding.key} to S3 as #{encoding.tmp_filepath} doesn't exist."
-          # log.warn "Error: Cannot upload as #{encoding.tmp_filepath} does not exist"
+          self.status = "error"
+          Merb.logger.info "Couldn't upload #{self.key} to S3 as #{self.tmp_filepath} doesn't exist."
+          # log.warn "Error: Cannot upload as #{self.tmp_filepath} does not exist"
         end
-        
-        encoding.encoding_time = (Time.now - begun_encoding).to_i
-        encoding.save
-        
+
+        self.encoding_time = (Time.now - begun_encoding).to_i
+        self.save
+
         # encoding[:executed_commands] = transcoder.executed_commands
       # rescue RVideo::TranscoderError => e
-      #   encoding.status = "error"
+      #   self.status = "error"
       #   # encoding[:executed_commands] = transcoder.executed_commands
       #   Merb.logger :error, "Error transcoding #{encoding[:id]}: #{e.class} - #{e.message}"
       #   Merb.logger.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
       # end
-    end
 
-    self.send_status
+    # self.parent.send_status
     Merb.logger.info "All encodings complete!"
     Merb.logger.info "Complete!"
-    # FileUtils.rm self.tmp_filepath
+    # FileUtils.rm self.parent.tmp_filepath
     return true
   end
+    
+    # def encode
+    #   Merb.logger.info "=========================================================="
+    #   Merb.logger.info Time.now.to_s
+    #   Merb.logger.info "=========================================================="
+    #   Merb.logger.info "Beginning encoding of video #{self.key}"
+    #   Merb.logger.info self.attributes.to_h.to_yaml
+    #   Merb.logger.info "Grabbing raw video from S3"
+    #   self.fetch_from_s3
+    # 
+    #   Merb.logger.info "No encodings for this video!" if self.encodings.empty?
+    #   
+    #   self.encodings.each do |encoding|
+    #     # encoding.reload!
+    #     begun_encoding = Time.now
+    #     Merb.logger.info "Beginning encoding:"
+    #     # Merb.logger.info encoding.attributes.to_h.to_yaml
+    # 
+    #     Merb.logger.info "Encoding #{encoding.key}"
+    #     
+    #     encoding.status = "processing"
+    #     encoding.save
+    # 
+    #     # Encode video
+    #     Merb.logger.info "Encoding video..."
+    #     inspector = RVideo::Inspector.new(:file => self.tmp_filepath)
+    #     transcoder = RVideo::Transcoder.new
+    # 
+    #     recipe_options = {:input_file => self.tmp_filepath, :output_file => encoding.tmp_filepath, 
+    #       :container => encoding.container, 
+    #       :video_codec => encoding.video_codec,
+    #       :video_bitrate_in_bits => encoding.video_bitrate_in_bits.to_s, 
+    #       :fps => encoding.fps,
+    #       :audio_codec => encoding.audio_codec.to_s, 
+    #       :audio_bitrate => encoding.audio_bitrate.to_s, 
+    #       :audio_bitrate_in_bits => encoding.audio_bitrate_in_bits.to_s, 
+    #       :audio_sample_rate => encoding.audio_sample_rate.to_s, 
+    #       :resolution => encoding.resolution,
+    #       :resolution_and_padding => encoding.ffmpeg_resolution_and_padding(inspector)
+    #       }
+    #       
+    #     self.capture_thumbnail_and_upload_to_s3
+    # 
+    #     Merb.logger.info recipe_options.to_yaml
+    # 
+    #     # begin
+    #       if encoding.container == "flv" and encoding.player == "flash"
+    #         recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
+    #         recipe += "\nflvtool2 -U $output_file$"
+    #         transcoder.execute(recipe, recipe_options)
+    #       elsif encoding.container == "mp4" and encoding.audio_codec == "aac" and encoding.player == "flash"
+    #         # Just the video without audio
+    #         temp_video_output_file = "#{encoding.tmp_filepath}.temp.self.mp4"
+    #         temp_audio_output_file = "#{encoding.tmp_filepath}.temp.audio.mp4"
+    #         temp_audio_output_wav_file = "#{encoding.tmp_filepath}.temp.audio.wav"
+    # 
+    #         recipe = "ffmpeg -i $input_file$ -an -vcodec libx264 -crf 28 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 22 -y $output_file$"
+    #         recipe_audio_extraction = "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$"
+    # 
+    #         transcoder.execute(recipe, recipe_options.merge({:output_file => temp_video_output_file}))
+    #         Merb.logger.info "Video encoding done"
+    # 
+    #         if inspector.audio?
+    #           # We have to use nero to encode the audio as ffmpeg doens't support HE-AAC yet
+    #           transcoder.execute(recipe_audio_extraction, recipe_options.merge({:output_file => temp_audio_output_wav_file}))
+    #           Merb.logger.info "Audio extraction done"
+    # 
+    #           # Convert to HE-AAC
+    #           %x(neroAacEnc -br #{encoding[:audio_bitrate_in_bits]} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
+    #           Merb.logger.info "Audio encoding done"
+    #           Merb.logger.info Time.now.to_s
+    # 
+    #           # Squash the audio and video together
+    #           FileUtils.rm(encoding.tmp_filepath) if File.exists?(encoding.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
+    #           %x(MP4Box -add #{temp_video_output_file}#video #{encoding.tmp_filepath})
+    #           %x(MP4Box -add #{temp_audio_output_file}#audio #{encoding.tmp_filepath})
+    # 
+    #           # Interleave meta data
+    #           %x(MP4Box -inter 500 #{encoding.tmp_filepath})
+    #           Merb.logger.info "Squashing done"
+    #         else
+    #           Merb.logger.info "This video does't have an audio stream"
+    #           FileUtils.mv(temp_video_output_file, encoding.tmp_filepath)
+    #         end
+    #         Merb.logger.info Time.now.to_s
+    #       else # Try straight ffmpeg encode
+    #         recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
+    #         transcoder.execute(recipe, recipe_options)
+    #         # log.warn "Error: unknown encoding format given"
+    #         # Merb.logger.error "Couldn't encode #{encoding.key}. Unknown encoding format given."
+    #       end
+    # 
+    #       Merb.logger.info "Done encoding"
+    # 
+    #       # Now upload it to S3
+    #       if File.exists?(encoding.tmp_filepath)
+    #         Merb.logger.info "Success encoding #{encoding.filename}. Uploading to S3."
+    #         Merb.logger.info "Uploading #{encoding.filename}"
+    # 
+    #         encoding.upload_to_s3
+    #         encoding.capture_thumbnail_and_upload_to_s3
+    #         
+    #         FileUtils.rm encoding.tmp_filepath
+    # 
+    #         Merb.logger.info "Done uploading"
+    # 
+    #         # Update the encoding data which will be returned to the server
+    #         encoding.status = "success"
+    #         encoding.set_encoded_at(Time.now)
+    #       else
+    #         encoding.status = "error"
+    #         Merb.logger.info "Couldn't upload #{encoding.key} to S3 as #{encoding.tmp_filepath} doesn't exist."
+    #         # log.warn "Error: Cannot upload as #{encoding.tmp_filepath} does not exist"
+    #       end
+    #       
+    #       encoding.encoding_time = (Time.now - begun_encoding).to_i
+    #       encoding.save
+    #       
+    #       # encoding[:executed_commands] = transcoder.executed_commands
+    #     # rescue RVideo::TranscoderError => e
+    #     #   encoding.status = "error"
+    #     #   # encoding[:executed_commands] = transcoder.executed_commands
+    #     #   Merb.logger :error, "Error transcoding #{encoding[:id]}: #{e.class} - #{e.message}"
+    #     #   Merb.logger.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
+    #     # end
+    #   end
+    # 
+    #   self.send_status
+    #   Merb.logger.info "All encodings complete!"
+    #   Merb.logger.info "Complete!"
+    #   # FileUtils.rm self.tmp_filepath
+    #   return true
+    # end
 end
