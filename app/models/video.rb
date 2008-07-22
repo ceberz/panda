@@ -392,6 +392,12 @@ class Video < SimpleDB::Base
     }
   end
   
+  def encode_flv
+    recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
+    recipe += "\nflvtool2 -U $output_file$"
+    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+  end
+  
   def encode
     parent_obj = self.parent_video
     Merb.logger.info "=========================================================="
@@ -421,9 +427,7 @@ class Video < SimpleDB::Base
 
       # begin
         if self.container == "flv" and self.player == "flash"
-          recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
-          recipe += "\nflvtool2 -U $output_file$"
-          transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+          self.encode_flv
         elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
           # Just the video without audio
           temp_video_output_file = "#{self.tmp_filepath}.temp.parent_obj.mp4"
