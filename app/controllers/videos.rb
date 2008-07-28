@@ -155,7 +155,7 @@ private
         "<textarea>" + {:error => msg}.to_json + "</textarea>"
       else
         @exception = msg
-        render(:template => "/exceptions/video_exception") # TODO: Why is :action setting 404 instead of 500?!?!
+        render(:template => "/exceptions/video_exception", :layout => false) # TODO: Why is :action setting 404 instead of 500?!?!
       end
     when :xml
       {:error => msg}.to_simple_xml
