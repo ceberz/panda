@@ -26,10 +26,4 @@ private
       throw :halt, render('', :status => 401)
     end
   end
-  
-  def set_video
-    unless @video = Video.find(params[:id])
-      throw :halt, render('', :status => 404)
-    end
-  end
 end  

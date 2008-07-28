@@ -1,7 +1,8 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
   before :require_login, :only => [:index, :show, :destroy, :new, :add_to_queue]
-  before :set_video, :only => [:show, :destroy, :form, :done, :state, :add_to_queue]
+  before :set_video, :only => [:show, :destroy, :add_to_queue]
+  before :set_video_with_nice_errors, :only => [:form, :done, :state]
 
   def index
     provides :html, :xml, :yaml
@@ -160,6 +161,20 @@ private
       {:error => msg}.to_simple_xml
     when :yaml
       {:error => msg}.to_yaml
+    end
+  end
+  
+  def set_video
+    # Throws Amazon::SDB::RecordNotFoundError if video cannot be found
+    @video = Video.find(params[:id])
+  end
+  
+  def set_video_with_nice_errors
+    begin
+      @video = Video.find(params[:id])
+    rescue Amazon::SDB::RecordNotFoundError
+      self.status = 404
+      throw :halt, render_error($!.to_s.gsub(/Amazon::SDB::/,""))
     end
   end
 end

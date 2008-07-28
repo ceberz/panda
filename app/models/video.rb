@@ -392,10 +392,56 @@ class Video < SimpleDB::Base
     }
   end
   
-  def encode_flv
+  def encode_flv_flash
+    transcoder = RVideo::Transcoder.new
     recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
     recipe += "\nflvtool2 -U $output_file$"
-    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+    return transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+  end
+  
+  def encode_mp4_aac_flash
+    transcoder = RVideo::Transcoder.new
+    # Just the video without audio
+    temp_video_output_file = "#{self.tmp_filepath}.temp.video.mp4"
+    temp_audio_output_file = "#{self.tmp_filepath}.temp.audio.mp4"
+    temp_audio_output_wav_file = "#{self.tmp_filepath}.temp.audio.wav"
+
+    recipe = "ffmpeg -i $input_file$ -an -vcodec libx264 -crf 28 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 22 -y $output_file$"
+    recipe_audio_extraction = "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$"
+
+    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, temp_video_output_file))
+    
+    Merb.logger.info "Video encoding done"
+    unless self.parent_video.audio_codec.blank?
+      # We have to use nero to encode the audio as ffmpeg doens't support HE-AAC yet
+      transcoder.execute(recipe_audio_extraction, recipe_options(self.parent_video.tmp_filepath, temp_audio_output_wav_file))
+      Merb.logger.info "Audio extraction done"
+
+      # Convert to HE-AAC
+      %x(neroAacEnc -br #{self.audio_bitrate_in_bits} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
+      Merb.logger.info "Audio encoding done"
+      Merb.logger.info Time.now.to_s
+
+      # Squash the audio and video together
+      FileUtils.rm(self.tmp_filepath) if File.exists?(self.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
+      %x(MP4Box -add #{temp_video_output_file}#video #{self.tmp_filepath})
+      %x(MP4Box -add #{temp_audio_output_file}#audio #{self.tmp_filepath})
+
+      # Interleave meta data
+      %x(MP4Box -inter 500 #{self.tmp_filepath})
+      Merb.logger.info "Squashing done"
+    else
+      Merb.logger.info "This video does't have an audio stream"
+      FileUtils.mv(temp_video_output_file, self.tmp_filepath)
+    end
+    Merb.logger.info Time.now.to_s
+  end
+  
+  def encode_unknown_format
+    transcoder = RVideo::Transcoder.new
+    recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
+    transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+    Merb.logger.info "Unknown encoding format given."
   end
   
   def encode
@@ -421,53 +467,16 @@ class Video < SimpleDB::Base
 
       # Encode video
       Merb.logger.info "Encoding video..."
-      transcoder = RVideo::Transcoder.new
 
-      parent_obj.capture_thumbnail_and_upload_to_s3
+      self.parent_video.capture_thumbnail_and_upload_to_s3
 
       # begin
         if self.container == "flv" and self.player == "flash"
-          self.encode_flv
+          self.encode_flv_flash
         elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
-          # Just the video without audio
-          temp_video_output_file = "#{self.tmp_filepath}.temp.parent_obj.mp4"
-          temp_audio_output_file = "#{self.tmp_filepath}.temp.audio.mp4"
-          temp_audio_output_wav_file = "#{self.tmp_filepath}.temp.audio.wav"
-
-          recipe = "ffmpeg -i $input_file$ -an -vcodec libx264 -crf 28 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 22 -y $output_file$"
-          recipe_audio_extraction = "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$"
-
-          transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, temp_video_output_file))
-          
-          Merb.logger.info "Video encoding done"
-          unless self.parent_video.audio_codec.blank?
-            # We have to use nero to encode the audio as ffmpeg doens't support HE-AAC yet
-            transcoder.execute(recipe_audio_extraction, recipe_options(self.parent_video.tmp_filepath, temp_audio_output_wav_file))
-            Merb.logger.info "Audio extraction done"
-
-            # Convert to HE-AAC
-            %x(neroAacEnc -br #{encoding[:audio_bitrate_in_bits]} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
-            Merb.logger.info "Audio encoding done"
-            Merb.logger.info Time.now.to_s
-
-            # Squash the audio and video together
-            FileUtils.rm(self.tmp_filepath) if File.exists?(self.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
-            %x(MP4Box -add #{temp_video_output_file}#video #{self.tmp_filepath})
-            %x(MP4Box -add #{temp_audio_output_file}#audio #{self.tmp_filepath})
-
-            # Interleave meta data
-            %x(MP4Box -inter 500 #{self.tmp_filepath})
-            Merb.logger.info "Squashing done"
-          else
-            Merb.logger.info "This video does't have an audio stream"
-            FileUtils.mv(temp_video_output_file, self.tmp_filepath)
-          end
-          Merb.logger.info Time.now.to_s
+          self.encode_mp4_aac_flash
         else # Try straight ffmpeg encode
-          recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
-          transcoder.execute(recipe, recipe_options)
-          # log.warn "Error: unknown encoding format given"
-          # Merb.logger.error "Couldn't encode #{self.key}. Unknown encoding format given."
+          self.encode_unknown_format
         end
 
         Merb.logger.info "Done encoding"

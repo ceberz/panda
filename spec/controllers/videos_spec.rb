@@ -35,6 +35,19 @@ require File.join(File.dirname(__FILE__), '..', 'spec_helper.rb')
 #   end
 # end
 
+describe Videos, "form action" do
+  before(:each) do
+    @video = Video.new
+    @video.key = 'abc'
+  end
+  
+  it "should return a nice error when the video can't be found" do
+    Video.should_receive(:find).with('qrs').and_raise(Amazon::SDB::RecordNotFoundError)
+    @c = get("/videos/qrs/form")
+    @c.body.should match(/RecordNotFoundError/)
+  end
+end
+
 describe Videos, "upload action" do
   before(:each) do
     @video = Video.new
