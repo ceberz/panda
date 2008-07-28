@@ -513,7 +513,7 @@ class Video < SimpleDB::Base
       #   Merb.logger.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
       # end
 
-    # parent_obj.send_status
+    parent_obj.send_status
     Merb.logger.info "All encodings complete!"
     Merb.logger.info "Complete!"
     # FileUtils.rm parent_obj.tmp_filepath
