@@ -178,8 +178,9 @@ class Video < SimpleDB::Base
     t = RVideo::Inspector.new(:file => self.tmp_filepath)
     t.capture_frame('50%', screenshot_tmp_filepath)
     
-    width = (self.width.to_f/(self.height.to_f/72.0)).to_i
-    height = self.height
+    constrain_to_height = 72.0
+    width = (self.width.to_f/(self.height/constrain_to_height)).to_i
+    height = constrain_to_height.to_i
     
     GDResize.new.resize(screenshot_tmp_filepath, thumbnail_tmp_filepath, [width,height])
     
