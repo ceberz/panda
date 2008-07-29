@@ -285,6 +285,9 @@ describe Video do
     parent_video = mock_video({:width => 640, :height => 480})
     encoding = mock_encoding_flv_flash({:width => 640, :height => 360})
     encoding.should_receive(:parent_video).twice.and_return(parent_video)
+    # We also need to then update the encoding's sizing to the new width
+    encoding.should_receive(:width=).with(480)
+    encoding.should_receive(:save)
     encoding.ffmpeg_resolution_and_padding_no_cropping.should == "-s 480x360 "
   end
   

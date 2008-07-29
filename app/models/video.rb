@@ -401,6 +401,8 @@ class Video < SimpleDB::Base
       width -= 1 if width % 2 == 1
 
       opts_string = %(-s #{width}x#{self.height} )
+      self.width = width
+      self.save
     # Otherwise letterbox it
     elsif height < out_h
       pad = ((out_h - height.to_f) / 2.0).to_i
