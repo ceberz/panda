@@ -281,6 +281,27 @@ describe Video do
   
   # def ffmpeg_resolution_and_padding(inspector)
   
+  it "should constrain video and preserve aspect ratio (no cropping or pillarboxing) if a 4:3 video is encoded with a 16:9 profile" do
+    parent_video = mock_video({:width => 640, :height => 480})
+    encoding = mock_encoding_flv_flash({:width => 640, :height => 360})
+    encoding.should_receive(:parent_video).twice.and_return(parent_video)
+    encoding.ffmpeg_resolution_and_padding_no_cropping.should == "-s 480x360 "
+  end
+  
+  it "should constrain video if a 16:9 video is encoded with a 16:9 profile" do
+    parent_video = mock_video({:width => 1280, :height => 720})
+    encoding = mock_encoding_flv_flash({:width => 640, :height => 360})
+    encoding.should_receive(:parent_video).twice.and_return(parent_video)
+    encoding.ffmpeg_resolution_and_padding_no_cropping.should == "-s 640x360 "
+  end
+  
+  it "should letterbox if a 2.40:1 (848x352) video is encoded with a 16:9 profile" do
+    parent_video = mock_video({:width => 848, :height => 352})
+    encoding = mock_encoding_flv_flash({:width => 640, :height => 360})
+    encoding.should_receive(:parent_video).twice.and_return(parent_video)
+    encoding.ffmpeg_resolution_and_padding_no_cropping.should == "-s 640x264 -padtop 48 -padbottom 48"
+  end
+  
   it "should return correct recipe_options hash" do
     encoding = mock_encoding_flv_flash
     encoding.should_receive(:parent_video).twice.and_return(@video)
@@ -334,6 +355,7 @@ describe Video do
     encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
     
     encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
+    @video.should_receive(:send_status)
     
     encoding.encode
   end
@@ -374,6 +396,7 @@ describe Video do
     encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
     
     encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
+    @video.should_receive(:send_status)
     
     encoding.encode
   end
@@ -405,6 +428,7 @@ describe Video do
     encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
     
     encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
+    @video.should_receive(:send_status)
     
     encoding.encode
   end
@@ -442,7 +466,7 @@ describe Video do
         :audio_bitrate => 48, 
         :width => 480,
         :height => 360
-      }
+      }.merge(attrs)
     )
   end
   
@@ -460,7 +484,7 @@ describe Video do
         :audio_bitrate => 48, 
         :width => 480,
         :height => 360
-      }
+      }.merge(attrs)
     )
   end
   

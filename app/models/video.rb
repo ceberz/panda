@@ -375,6 +375,42 @@ class Video < SimpleDB::Base
     return opts_string
   end
   
+  def ffmpeg_resolution_and_padding_no_cropping
+    # Calculate resolution and any padding
+    in_w = self.parent_video.width.to_f
+    in_h = self.parent_video.height.to_f
+    out_w = self.width.to_f
+    out_h = self.height.to_f
+
+    begin
+      aspect = in_w / in_h
+      aspect_inv = in_h / in_w
+    rescue
+      Merb.logger.error "Couldn't do w/h to caculate aspect. Just using the output resolution now."
+      return %(-s #{self.width}x#{self.height} )
+    end
+
+    height = (out_w / aspect.to_f).to_i
+    height -= 1 if height % 2 == 1
+
+    opts_string = %(-s #{self.width}x#{height} )
+
+    # Keep the video's original width if the height
+    if height > out_h
+      width = (out_h / aspect_inv.to_f).to_i
+      width -= 1 if width % 2 == 1
+
+      opts_string = %(-s #{width}x#{self.height} )
+    # Otherwise letterbox it
+    elsif height < out_h
+      pad = ((out_h - height.to_f) / 2.0).to_i
+      pad -= 1 if pad % 2 == 1
+      opts_string += %(-padtop #{pad} -padbottom #{pad})
+    end
+
+    return opts_string
+  end
+  
   def recipe_options(input_file, output_file)
     {
       :input_file => input_file,
@@ -388,7 +424,7 @@ class Video < SimpleDB::Base
       :audio_bitrate_in_bits => self.audio_bitrate_in_bits.to_s, 
       :audio_sample_rate => self.audio_sample_rate.to_s, 
       :resolution => self.resolution,
-      :resolution_and_padding => self.ffmpeg_resolution_and_padding
+      :resolution_and_padding => self.ffmpeg_resolution_and_padding_no_cropping
     }
   end
   
