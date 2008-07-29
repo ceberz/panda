@@ -9,11 +9,11 @@ loop do
     Merb.logger.info "Got a message!"
     Merb.logger.info video.show_response.to_yaml
 
-    begin
+    # begin
       video.encode
-    rescue
-      Merb.logger.info "ERROR ENCODING!"
-    end
+    # rescue
+    #   Merb.logger.info "ERROR ENCODING!"
+    # end
   end
   # log.warn "Panda returned an unexpected response"
 end
