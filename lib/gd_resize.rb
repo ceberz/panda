@@ -45,8 +45,7 @@ class GDResize
         fclose(in);
 
         /* Only resize if the image is out of bounds - this should be done outside of C */
-        if(im_in->sx > box_w || im_in->sy > box_h) {
-          /* New image size */
+        /*if(im_in->sx > box_w || im_in->sy > box_h) {
           if(im_in->sx > im_in->sy) {
             r = (float)im_in->sy / (float)im_in->sx;
             x = box_w;
@@ -59,7 +58,11 @@ class GDResize
         } else {
           x = im_in->sx;
           y = im_in->sy;
-        }
+        }*/
+        
+        /* Just resize to the dimensions we are given for now */
+        x = box_w;
+        y = box_h;
 
         /* Make the output image four times as small on both axes. Use
           a true color image so that we can interpolate colors. */

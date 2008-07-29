@@ -178,7 +178,10 @@ class Video < SimpleDB::Base
     t = RVideo::Inspector.new(:file => self.tmp_filepath)
     t.capture_frame('50%', screenshot_tmp_filepath)
     
-    GDResize.new.resize(screenshot_tmp_filepath, thumbnail_tmp_filepath, [128,72])
+    width = (self.width.to_f/(self.height.to_f/72.0)).to_i
+    height = self.height
+    
+    GDResize.new.resize(screenshot_tmp_filepath, thumbnail_tmp_filepath, [width,height])
     
     begin
       retryable(:tries => 5) do
