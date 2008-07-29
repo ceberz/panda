@@ -327,19 +327,23 @@ class Video < SimpleDB::Base
     
     Merb.logger.info "Sending status update of video##{self.key} to #{state_update_url}"
     
-    begin
-      uri = URI.parse(state_update_url)
-      http = Net::HTTP.new(uri.host, uri.port)
-      # result = Net::HTTP.get_response(URI.parse(state_update_url))
+    1.upto(4) do |i|
+      begin
+        uri = URI.parse(state_update_url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        # result = Net::HTTP.get_response(URI.parse(state_update_url))
       
-      req = Net::HTTP::Post.new(uri.path)
-      req.form_data = params
-      response = http.request(req)
+        req = Net::HTTP::Post.new(uri.path)
+        req.form_data = params
+        response = http.request(req)
       
-      Merb.logger.info "--> #{response.code} #{response.message} (#{response.body.length})"
-    rescue
-      Merb.logger.info "Couldn't connect to #{state_update_url}"
-      # TODO: Send back a nice error if we can't connect to the client
+        Merb.logger.info "--> #{i} #{response.code} #{response.message} (#{response.body.length})"
+      rescue
+        Merb.logger.info "--> #{i} Couldn't connect to #{state_update_url}"
+        # TODO: Send back a nice error if we can't connect to the client
+      end
+      
+      sleep 1
     end
   end
   
