@@ -178,7 +178,7 @@ class Video < SimpleDB::Base
     t = RVideo::Inspector.new(:file => self.tmp_filepath)
     t.capture_frame('50%', screenshot_tmp_filepath)
     
-    constrain_to_height = 72.0
+    constrain_to_height = 125.0
     width = (self.width.to_f/(self.height.to_f/constrain_to_height)).to_i
     height = constrain_to_height.to_i
     
