@@ -228,6 +228,13 @@ table.videos .success {
 	margin: 0;
 }
 
+.thumb {
+  background: #000;
+  text-align: center;
+  width: 128px;
+  height: 72px;
+}
+
 /* ACCOUNT */
 
 .account_details h3 {
