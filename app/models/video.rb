@@ -455,63 +455,62 @@ class Video < SimpleDB::Base
     parent_obj.fetch_from_s3
     encoding = self
 
-      # self.reload!
-      begun_encoding = Time.now
-      Merb.logger.info "Beginning encoding:"
-      # Merb.logger.info self.attributes.to_h.to_yaml
+    # self.reload!
+    begun_encoding = Time.now
+    Merb.logger.info "Beginning encoding:"
+    # Merb.logger.info self.attributes.to_h.to_yaml
 
-      Merb.logger.info "Encoding #{self.key}"
+    Merb.logger.info "Encoding #{self.key}"
 
-      self.status = "processing"
-      self.save
+    self.status = "processing"
+    self.save
 
-      # Encode video
-      Merb.logger.info "Encoding video..."
+    # Encode video
+    Merb.logger.info "Encoding video..."
 
-      self.parent_video.capture_thumbnail_and_upload_to_s3
+    self.parent_video.capture_thumbnail_and_upload_to_s3
 
-      # begin
-        if self.container == "flv" and self.player == "flash"
-          self.encode_flv_flash
-        elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
-          self.encode_mp4_aac_flash
-        else # Try straight ffmpeg encode
-          self.encode_unknown_format
-        end
+    begin
+      if self.container == "flv" and self.player == "flash"
+        self.encode_flv_flash
+      elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
+        self.encode_mp4_aac_flash
+      else # Try straight ffmpeg encode
+        self.encode_unknown_format
+      end
+    
+      Merb.logger.info "Done encoding"
+    rescue RVideo::TranscoderError => e
+      Merb.logger.info "Unable to transcode file #{self.key}: #{e.class} - #{e.message}"
+      self.status = "error"
+    rescue
+      Merb.logger.info "Unable to transcode file #{self.key}: EXCEPTION #{$!.to_s}"
+      self.status = "error"
+    end
+    
+    # Now upload it to S3
+    if File.exists?(self.tmp_filepath)
+      Merb.logger.info "Success encoding #{self.filename}. Uploading to S3."
+      Merb.logger.info "Uploading #{self.filename}"
 
-        Merb.logger.info "Done encoding"
+      self.upload_to_s3
+      self.capture_thumbnail_and_upload_to_s3
 
-        # Now upload it to S3
-        if File.exists?(self.tmp_filepath)
-          Merb.logger.info "Success encoding #{self.filename}. Uploading to S3."
-          Merb.logger.info "Uploading #{self.filename}"
+      FileUtils.rm self.tmp_filepath
 
-          self.upload_to_s3
-          self.capture_thumbnail_and_upload_to_s3
+      Merb.logger.info "Done uploading"
 
-          FileUtils.rm self.tmp_filepath
+      # Update the encoding data which will be returned to the server
+      self.status = "success"
+      self.set_encoded_at(Time.now)
+    else
+      self.status = "error"
+      Merb.logger.info "Couldn't upload #{self.key} to S3 as #{self.tmp_filepath} doesn't exist."
+      # log.warn "Error: Cannot upload as #{self.tmp_filepath} does not exist"
+    end
 
-          Merb.logger.info "Done uploading"
-
-          # Update the encoding data which will be returned to the server
-          self.status = "success"
-          self.set_encoded_at(Time.now)
-        else
-          self.status = "error"
-          Merb.logger.info "Couldn't upload #{self.key} to S3 as #{self.tmp_filepath} doesn't exist."
-          # log.warn "Error: Cannot upload as #{self.tmp_filepath} does not exist"
-        end
-
-        self.encoding_time = (Time.now - begun_encoding).to_i
-        self.save
-
-        # encoding[:executed_commands] = transcoder.executed_commands
-      # rescue RVideo::TranscoderError => e
-      #   self.status = "error"
-      #   # encoding[:executed_commands] = transcoder.executed_commands
-      #   Merb.logger :error, "Error transcoding #{encoding[:id]}: #{e.class} - #{e.message}"
-      #   Merb.logger.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
-      # end
+    self.encoding_time = (Time.now - begun_encoding).to_i
+    self.save
 
     parent_obj.send_status
     Merb.logger.info "All encodings complete!"
