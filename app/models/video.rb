@@ -353,6 +353,7 @@ class Video < SimpleDB::Base
   end
   
   def time_to_send_notification?
+    return true if self.last_notification_at.nil?
     Time.now > (self.last_notification_at + self.notification_wait_period)
   end
   
@@ -560,7 +561,7 @@ class Video < SimpleDB::Base
       self.upload_to_s3
       self.capture_thumbnail_and_upload_to_s3
       
-      self.notification = 'pending'
+      self.notification = 0
       self.status = "success"
       self.set_encoded_at(Time.now)
       self.encoding_time = (Time.now - begun_encoding).to_i
@@ -571,7 +572,7 @@ class Video < SimpleDB::Base
       
       Merb.logger.info "Encoding successful"
     rescue
-      self.notification = 'pending'
+      self.notification = 0
       self.status = "error"
       self.save
       FileUtils.rm parent_obj.tmp_filepath
