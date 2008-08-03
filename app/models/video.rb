@@ -1,6 +1,8 @@
 class Video < SimpleDB::Base
   set_domain Panda::Config[:sdb_videos_domain]
-  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :queued_at, :started_encoding_at, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
+  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :queued_at, :started_encoding_at, :encoding_time, :encoded_at, :encoded_at_desc, :last_notification_at, :notification, :updated_at, :created_at
+  
+  # TODO: remove encoded_at_desc and use sdb desc sort instead
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -38,7 +40,12 @@ class Video < SimpleDB::Base
   end
   
   def self.next_job
+    # TODO: change to outstanding_jobs and remove .first
     self.query("['status' = 'queued']").first
+  end
+  
+  def self.outstanding_notifications
+    self.query("['notification' != 'success'] intersection ['status' = 'success' or 'status' = 'error']") #  sort 'last_notification_at' asc
   end
   
   # def self.recently_completed_videos
@@ -61,9 +68,9 @@ class Video < SimpleDB::Base
   # ============
   
   def obliterate!
-    S3VideoObject.delete(self.filename)
+    self.delete_from_s3
     self.encodings.each do |e|
-      S3VideoObject.delete(e.filename)
+      e.delete_from_s3
       e.destroy!
     end
     self.destroy!
@@ -149,6 +156,7 @@ class Video < SimpleDB::Base
         sleep 1
       end
     rescue
+      Merb.logger.error "Error uploading #{self.filename} to S3"
       raise
     else
       true
@@ -165,6 +173,21 @@ class Video < SimpleDB::Base
         sleep 1
       end
     rescue
+      Merb.logger.error "Error fetching #{self.filename} from S3"
+      raise
+    else
+      true
+    end
+  end
+  
+  def delete_from_s3
+    begin
+      retryable(:tries => 5) do
+        S3VideoObject.delete(self.filename)
+        sleep 1
+      end
+    rescue
+      Merb.logger.error "Error deleting #{self.filename} from S3"
       raise
     else
       true
@@ -178,7 +201,7 @@ class Video < SimpleDB::Base
     t = RVideo::Inspector.new(:file => self.tmp_filepath)
     t.capture_frame('50%', screenshot_tmp_filepath)
     
-    constrain_to_height = 125.0
+    constrain_to_height = Panda::Config[:thumbnail_height_constrain].to_f
     width = (self.width.to_f/(self.height.to_f/constrain_to_height)).to_i
     height = constrain_to_height.to_i
     
@@ -212,7 +235,7 @@ class Video < SimpleDB::Base
   end
   
   def read_metadata
-    Rog.log :info, "#{self.key}: Meading metadata of video file"
+    Merb.logger.info "#{self.key}: Meading metadata of video file"
     
     inspector = RVideo::Inspector.new(:file => self.tmp_filepath)
 
@@ -276,6 +299,7 @@ class Video < SimpleDB::Base
   # Exceptions
   
   class VideoError < StandardError; end
+  class NotificationError < StandardError; end
   
   # 404
   class NotValid < VideoError; end
@@ -321,29 +345,52 @@ class Video < SimpleDB::Base
     }
   end
   
-  # TODO: Use notifications daemon
-  def send_status
+  # Notifications
+  # =============
+  
+  def notification_wait_period
+    (Panda::Config[:notification_frequency] * self.notification.to_i)
+  end
+  
+  def time_to_send_notification?
+    Time.now > (self.last_notification_at + self.notification_wait_period)
+  end
+  
+  def send_notification
+    raise "You can only send the status of encodings" unless self.encoding?
+    
+    self.last_notification_at = Time.now
+    begin
+      self.parent_video.send_status_update_to_client
+      self.notification = 'success'
+      self.save
+    rescue
+      # Increment num retries
+      self.notification = self.notification.to_i + 1
+      self.save
+      raise
+    end
+  end
+  
+  def send_status_update_to_client
+    Merb.logger.debug "Sending notification to #{self.state_update_url}"
+    
     params = {"video" => self.show_response.to_yaml}
     
-    Merb.logger.info "Sending status update of video##{self.key} to #{state_update_url}"
+    uri = URI.parse(self.state_update_url)
+    http = Net::HTTP.new(uri.host, uri.port)
+
+    req = Net::HTTP::Post.new(uri.path)
+    req.form_data = params
+    response = http.request(req)
     
-    1.upto(4) do |i|
-      begin
-        uri = URI.parse(state_update_url)
-        http = Net::HTTP.new(uri.host, uri.port)
-        # result = Net::HTTP.get_response(URI.parse(state_update_url))
+    unless response.code.to_i == 200 and response.body.match /ok/
+      Merb.logger.error "--> #{response.code} #{response.message} (#{response.body.length})"
+      Merb.logger.error "="*60
+      Merb.logger.error "#{response.body}"
+      Merb.logger.error "="*60
       
-        req = Net::HTTP::Post.new(uri.path)
-        req.form_data = params
-        response = http.request(req)
-      
-        Merb.logger.info "--> #{i} #{response.code} #{response.message} (#{response.body.length})"
-      rescue
-        Merb.logger.info "--> #{i} Couldn't connect to #{state_update_url}"
-        # TODO: Send back a nice error if we can't connect to the client
-      end
-      
-      sleep 1
+      raise NotificationError
     end
   end
   
@@ -466,7 +513,6 @@ class Video < SimpleDB::Base
       # Convert to HE-AAC
       %x(neroAacEnc -br #{self.audio_bitrate_in_bits} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
       Merb.logger.info "Audio encoding done"
-      Merb.logger.info Time.now.to_s
 
       # Squash the audio and video together
       FileUtils.rm(self.tmp_filepath) if File.exists?(self.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
@@ -480,41 +526,27 @@ class Video < SimpleDB::Base
       Merb.logger.info "This video does't have an audio stream"
       FileUtils.mv(temp_video_output_file, self.tmp_filepath)
     end
-    Merb.logger.info Time.now.to_s
   end
   
   def encode_unknown_format
     transcoder = RVideo::Transcoder.new
-    recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
+    recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 24 $resolution_and_padding$ -y $output_file$"
+    Merb.logger.info "Unknown encoding format given but trying to encode anyway."
     transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
-    Merb.logger.info "Unknown encoding format given."
   end
   
   def encode
-    parent_obj = self.parent_video
-    Merb.logger.info "=========================================================="
-    Merb.logger.info Time.now.to_s
-    Merb.logger.info "=========================================================="
-    Merb.logger.info "Beginning encoding of video #{parent_obj.key}"
-    Merb.logger.info parent_obj.attributes.to_h.to_yaml
-    Merb.logger.info "Grabbing raw video from S3"
-    parent_obj.fetch_from_s3
-    encoding = self
-
-    # self.reload!
-    begun_encoding = Time.now
-    Merb.logger.info "Beginning encoding:"
-    # Merb.logger.info self.attributes.to_h.to_yaml
-
-    Merb.logger.info "Encoding #{self.key}"
-
     self.status = "processing"
     self.save
-
-    # Encode video
-    Merb.logger.info "Encoding video..."
-
-    self.parent_video.capture_thumbnail_and_upload_to_s3
+    
+    begun_encoding = Time.now
+    
+    parent_obj = self.parent_video
+    Merb.logger.info "(#{Time.now.to_s}) Encoding #{self.key}"
+    
+    encoding = self
+    
+    parent_obj.fetch_from_s3
 
     begin
       if self.container == "flv" and self.player == "flash"
@@ -524,177 +556,30 @@ class Video < SimpleDB::Base
       else # Try straight ffmpeg encode
         self.encode_unknown_format
       end
-    
-      Merb.logger.info "Done encoding"
-    rescue RVideo::TranscoderError => e
-      Merb.logger.info "Unable to transcode file #{self.key}: #{e.class} - #{e.message}"
-      self.status = "error"
-    rescue
-      Merb.logger.info "Unable to transcode file #{self.key}: EXCEPTION #{$!.to_s}"
-      self.status = "error"
-    end
-    
-    # Now upload it to S3
-    if File.exists?(self.tmp_filepath)
-      Merb.logger.info "Success encoding #{self.filename}. Uploading to S3."
-      Merb.logger.info "Uploading #{self.filename}"
-
+      
       self.upload_to_s3
       self.capture_thumbnail_and_upload_to_s3
-
-      FileUtils.rm self.tmp_filepath
-
-      Merb.logger.info "Done uploading"
-
-      # Update the encoding data which will be returned to the server
+      
+      self.notification = 0
       self.status = "success"
       self.set_encoded_at(Time.now)
-    else
+      self.encoding_time = (Time.now - begun_encoding).to_i
+      self.save
+
+      FileUtils.rm self.tmp_filepath
+      FileUtils.rm parent_obj.tmp_filepath
+      
+      Merb.logger.info "Encoding successful"
+    rescue
+      self.notification = 0
       self.status = "error"
-      Merb.logger.info "Couldn't upload #{self.key} to S3 as #{self.tmp_filepath} doesn't exist."
-      # log.warn "Error: Cannot upload as #{self.tmp_filepath} does not exist"
+      self.save
+      FileUtils.rm parent_obj.tmp_filepath
+      
+      Merb.logger.error "Unable to transcode file #{self.key}: #{$!.class} - #{$!.message}"
+        
+      raise
     end
-
-    self.encoding_time = (Time.now - begun_encoding).to_i
-    self.save
-
-    parent_obj.send_status
-    Merb.logger.info "All encodings complete!"
-    Merb.logger.info "Complete!"
-    # FileUtils.rm parent_obj.tmp_filepath
-    return true
   end
-  
-    # def encode
-    #   Merb.logger.info "=========================================================="
-    #   Merb.logger.info Time.now.to_s
-    #   Merb.logger.info "=========================================================="
-    #   Merb.logger.info "Beginning encoding of video #{self.key}"
-    #   Merb.logger.info self.attributes.to_h.to_yaml
-    #   Merb.logger.info "Grabbing raw video from S3"
-    #   self.fetch_from_s3
-    # 
-    #   Merb.logger.info "No encodings for this video!" if self.encodings.empty?
-    #   
-    #   self.encodings.each do |encoding|
-    #     # encoding.reload!
-    #     begun_encoding = Time.now
-    #     Merb.logger.info "Beginning encoding:"
-    #     # Merb.logger.info encoding.attributes.to_h.to_yaml
-    # 
-    #     Merb.logger.info "Encoding #{encoding.key}"
-    #     
-    #     encoding.status = "processing"
-    #     encoding.save
-    # 
-    #     # Encode video
-    #     Merb.logger.info "Encoding video..."
-    #     inspector = RVideo::Inspector.new(:file => self.tmp_filepath)
-    #     transcoder = RVideo::Transcoder.new
-    # 
-    #     recipe_options = {:input_file => self.tmp_filepath, :output_file => encoding.tmp_filepath, 
-    #       :container => encoding.container, 
-    #       :video_codec => encoding.video_codec,
-    #       :video_bitrate_in_bits => encoding.video_bitrate_in_bits.to_s, 
-    #       :fps => encoding.fps,
-    #       :audio_codec => encoding.audio_codec.to_s, 
-    #       :audio_bitrate => encoding.audio_bitrate.to_s, 
-    #       :audio_bitrate_in_bits => encoding.audio_bitrate_in_bits.to_s, 
-    #       :audio_sample_rate => encoding.audio_sample_rate.to_s, 
-    #       :resolution => encoding.resolution,
-    #       :resolution_and_padding => encoding.ffmpeg_resolution_and_padding(inspector)
-    #       }
-    #       
-    #     self.capture_thumbnail_and_upload_to_s3
-    # 
-    #     Merb.logger.info recipe_options.to_yaml
-    # 
-    #     # begin
-    #       if encoding.container == "flv" and encoding.player == "flash"
-    #         recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$"
-    #         recipe += "\nflvtool2 -U $output_file$"
-    #         transcoder.execute(recipe, recipe_options)
-    #       elsif encoding.container == "mp4" and encoding.audio_codec == "aac" and encoding.player == "flash"
-    #         # Just the video without audio
-    #         temp_video_output_file = "#{encoding.tmp_filepath}.temp.self.mp4"
-    #         temp_audio_output_file = "#{encoding.tmp_filepath}.temp.audio.mp4"
-    #         temp_audio_output_wav_file = "#{encoding.tmp_filepath}.temp.audio.wav"
-    # 
-    #         recipe = "ffmpeg -i $input_file$ -an -vcodec libx264 -crf 28 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 22 -y $output_file$"
-    #         recipe_audio_extraction = "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$"
-    # 
-    #         transcoder.execute(recipe, recipe_options.merge({:output_file => temp_video_output_file}))
-    #         Merb.logger.info "Video encoding done"
-    # 
-    #         if inspector.audio?
-    #           # We have to use nero to encode the audio as ffmpeg doens't support HE-AAC yet
-    #           transcoder.execute(recipe_audio_extraction, recipe_options.merge({:output_file => temp_audio_output_wav_file}))
-    #           Merb.logger.info "Audio extraction done"
-    # 
-    #           # Convert to HE-AAC
-    #           %x(neroAacEnc -br #{encoding[:audio_bitrate_in_bits]} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
-    #           Merb.logger.info "Audio encoding done"
-    #           Merb.logger.info Time.now.to_s
-    # 
-    #           # Squash the audio and video together
-    #           FileUtils.rm(encoding.tmp_filepath) if File.exists?(encoding.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
-    #           %x(MP4Box -add #{temp_video_output_file}#video #{encoding.tmp_filepath})
-    #           %x(MP4Box -add #{temp_audio_output_file}#audio #{encoding.tmp_filepath})
-    # 
-    #           # Interleave meta data
-    #           %x(MP4Box -inter 500 #{encoding.tmp_filepath})
-    #           Merb.logger.info "Squashing done"
-    #         else
-    #           Merb.logger.info "This video does't have an audio stream"
-    #           FileUtils.mv(temp_video_output_file, encoding.tmp_filepath)
-    #         end
-    #         Merb.logger.info Time.now.to_s
-    #       else # Try straight ffmpeg encode
-    #         recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$"
-    #         transcoder.execute(recipe, recipe_options)
-    #         # log.warn "Error: unknown encoding format given"
-    #         # Merb.logger.error "Couldn't encode #{encoding.key}. Unknown encoding format given."
-    #       end
-    # 
-    #       Merb.logger.info "Done encoding"
-    # 
-    #       # Now upload it to S3
-    #       if File.exists?(encoding.tmp_filepath)
-    #         Merb.logger.info "Success encoding #{encoding.filename}. Uploading to S3."
-    #         Merb.logger.info "Uploading #{encoding.filename}"
-    # 
-    #         encoding.upload_to_s3
-    #         encoding.capture_thumbnail_and_upload_to_s3
-    #         
-    #         FileUtils.rm encoding.tmp_filepath
-    # 
-    #         Merb.logger.info "Done uploading"
-    # 
-    #         # Update the encoding data which will be returned to the server
-    #         encoding.status = "success"
-    #         encoding.set_encoded_at(Time.now)
-    #       else
-    #         encoding.status = "error"
-    #         Merb.logger.info "Couldn't upload #{encoding.key} to S3 as #{encoding.tmp_filepath} doesn't exist."
-    #         # log.warn "Error: Cannot upload as #{encoding.tmp_filepath} does not exist"
-    #       end
-    #       
-    #       encoding.encoding_time = (Time.now - begun_encoding).to_i
-    #       encoding.save
-    #       
-    #       # encoding[:executed_commands] = transcoder.executed_commands
-    #     # rescue RVideo::TranscoderError => e
-    #     #   encoding.status = "error"
-    #     #   # encoding[:executed_commands] = transcoder.executed_commands
-    #     #   Merb.logger :error, "Error transcoding #{encoding[:id]}: #{e.class} - #{e.message}"
-    #     #   Merb.logger.info "Unable to transcode file #{encoding[:id]}: #{e.class} - #{e.message}"
-    #     # end
-    #   end
-    # 
-    #   self.send_status
-    #   Merb.logger.info "All encodings complete!"
-    #   Merb.logger.info "Complete!"
-    #   # FileUtils.rm self.tmp_filepath
-    #   return true
-    # end
+
 end

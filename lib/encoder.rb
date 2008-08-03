@@ -4,18 +4,28 @@ Merb.logger.info 'Encoder awake!'
 
 loop do
   sleep 3
-  Merb.logger.info "Checking for messages... #{Time.now}"
+  Merb.logger.debug "Checking for messages... #{Time.now}"
   if video = Video.next_job
-    Merb.logger.info "Got a message!"
-    Merb.logger.info video.show_response.to_yaml
-
     begin
       video.encode
-    rescue
-      Merb.logger.info "ERROR ENCODING! #{$!}"
+    rescue  
+      Merb.logger.error "="*60
+      Merb.logger.error "ERROR ENCODING! #{$!}"
+      Merb.logger.error "="*60
+      
+      Merb.logger.error ""
+      
+      Merb.logger.error "PARENT ATTRS"
+      Merb.logger.error "="*60
+      Merb.logger.error video.parent.attributes.to_h.to_yaml
+      
+      Merb.logger.error ""
+      
+      Merb.logger.error "ENCODING ATTRS"
+      Merb.logger.error "="*60
+      Merb.logger.error video.attributes.to_h.to_yaml
     end
   end
-  # log.warn "Panda returned an unexpected response"
 end
 
 # recipe = "ffmpeg -i $input_file$ -ar 22050 -ab 48 -vcodec h264 -f mp4 -b #{video[:video_bitrate]} -r #{inspector.fps} -s" 

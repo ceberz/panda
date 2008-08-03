@@ -64,7 +64,7 @@ class Videos < Application
     @video = Video.create
     @video.status = 'empty'
     @video.save
-    Merb.logger.info, "#{@video.key}: Created video"
+    Merb.logger.info "#{@video.key}: Created video"
     sleep 2
 
     case content_type

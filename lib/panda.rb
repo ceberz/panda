@@ -26,7 +26,8 @@ module Panda
           :state_update_url       => "http://127.0.0.1:3000/videos/$1/status",
           :videos_domain          => nil,
           :storage                => :filesystem, # or :s3 TODO: implement
-          :thumbnail_height_constrain => 126
+          :thumbnail_height_constrain => 126,
+          :notification_frequency => 3
         }
       end
       

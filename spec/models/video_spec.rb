@@ -9,6 +9,7 @@ describe Video do
       p[:state_update_url] = "http://localhost:4000/videos/$id/status"
       p[:upload_redirect_url] = "http://localhost:4000/videos/$id/done"
       p[:videos_domain] = "videos.pandastream.com"
+      p[:thumbnail_height_constrain] = 126
     end
     
     class S3VideoObject; end
@@ -49,7 +50,7 @@ describe Video do
     Video.queued_encodings
   end
   
-  def next_job
+  it "self.next_job" do
     Video.should_receive(:query).with("['status' = 'queued']").and_return([])
     Video.next_job
   end
@@ -197,7 +198,7 @@ describe Video do
     RVideo::Inspector.should_receive(:new).with(:file => '/tmp/abc.mov').and_return(inspector)
     
     gd = mock(GDResize)
-    gd.should_receive(:resize).with('/tmp/abc.mov.jpg', '/tmp/abc.mov_thumb.jpg', [96,96])
+    gd.should_receive(:resize).with('/tmp/abc.mov.jpg', '/tmp/abc.mov_thumb.jpg', [168,126]) # Dimensions based on thumbnail_height_constrain of 126
     GDResize.should_receive(:new).and_return(gd)
     
     File.should_receive(:open).with('/tmp/abc.mov.jpg').and_return(:fp)
@@ -274,7 +275,54 @@ describe Video do
     @video.create_response.should == {:video => {:id => 'abc'}}
   end
   
-  # def send_status
+  # Notifications
+  # =============
+  
+  it "should return true if the current time is past the encoding's notification wait period" do
+    t = Time.now
+    encoding = mock_encoding_flv_flash(:last_notification_at => t - 50, :notification => 1)
+    # Default notification_frequency is 1 second
+    encoding.time_to_send_notification?.should == true
+  end
+  
+  it "should return false if the current time is not past the encoding's notification wait period" do
+    t = Time.now
+    encoding = mock_encoding_flv_flash(:last_notification_at => t, :notification => 10)
+    Panda::Config[:notification_frequency] = 50
+    encoding.time_to_send_notification?.should == false
+  end
+  
+  it "should send notification to client" do
+    encoding = mock_encoding_flv_flash
+    encoding.stub!(:parent_video).and_return(@video)
+    @video.should_receive(:send_status_update_to_client)
+    
+    encoding.should_receive(:last_notification_at=).with(an_instance_of(Time))
+    encoding.should_receive(:notification=).with("success")
+    encoding.should_receive(:save)
+    
+    encoding.send_notification
+  end
+  
+  it "should increment notification retry count if sending the notification fails" do
+    encoding = mock_encoding_flv_flash
+    encoding.stub!(:parent_video).and_return(@video)
+    @video.should_receive(:send_status_update_to_client).and_raise(Video::NotificationError)
+    
+    encoding.should_receive(:last_notification_at=).with(an_instance_of(Time))
+    encoding.should_receive(:notification).and_return(3)
+    encoding.should_receive(:notification=).with(4)
+    encoding.should_receive(:save)
+    
+    lambda {encoding.send_notification}.should raise_error(Video::NotificationError)
+  end
+  
+  it "should only allow notifications of encodings to be sent" do
+    lambda {@video.send_notification}.should raise_error(StandardError)
+  end
+  
+  # it "should send_status_update_to_client" do
+    
   
   # Encoding
   # ========
@@ -325,118 +373,95 @@ describe Video do
       }
     )
   end
-  
-  it "should encode to an flv for the flash player" do
+    
+  it "should call encode_flv_flash when encoding an flv for the flash player" do
     encoding = mock_encoding_flv_flash
     encoding.stub!(:parent_video).and_return(@video)
-    encoding.stub!(:save)
     @video.should_receive(:fetch_from_s3)
-    
+  
     encoding.should_receive(:status=).with("processing")
-    
-    transcoder = mock(RVideo::Transcoder)
-    RVideo::Transcoder.should_receive(:new).and_return(transcoder)
-    
-    @video.should_receive(:capture_thumbnail_and_upload_to_s3)
-    
-    transcoder.should_receive(:execute).with(
-      "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 22 $resolution_and_padding$ -y $output_file$\nflvtool2 -U $output_file$", nil)
-    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.flv')
-    
-    # Testing separate audio extraction and encoding for flash h264
-    # transcoder.should_receive(:execute).with(
-    #   "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$", nil)
-    # encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.flv.temp.audio.wav')
-    
-    # Now upload it to S3
-    File.should_receive(:exists?).with('/tmp/xyz.flv').and_return(true)
+    encoding.should_receive(:save).twice
+    encoding.should_receive(:encode_flv_flash)
+  
     encoding.should_receive(:upload_to_s3)
     encoding.should_receive(:capture_thumbnail_and_upload_to_s3)
-    FileUtils.should_receive(:rm).with('/tmp/xyz.flv')
     
+    encoding.should_receive(:notification=).with(0)
     encoding.should_receive(:status=).with("success")
     encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
-    
     encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
-    @video.should_receive(:send_status)
+    # encoding.should_receive(:save) expected twice above
     
+    FileUtils.should_receive(:rm).with('/tmp/xyz.flv')
+    FileUtils.should_receive(:rm).with('/tmp/abc.mov')
+  
     encoding.encode
   end
   
-  it "should encode to an mp4 with aac audio for the flash player" do
-    encoding = mock_encoding_mp4_aac_flash
+  it "should set the encoding's status to error if the video fails to encode correctly" do
+    encoding = mock_encoding_flv_flash
     encoding.stub!(:parent_video).and_return(@video)
-    encoding.stub!(:save)
     @video.should_receive(:fetch_from_s3)
-    
+  
     encoding.should_receive(:status=).with("processing")
-    
+    encoding.should_receive(:save).twice
+    encoding.should_receive(:encode_flv_flash).and_raise(RVideo::TranscoderError)
+    encoding.should_receive(:notification=).with(0)
+    encoding.should_receive(:status=).with("error")
+    # encoding.should_receive(:save) expected twice above
+    FileUtils.should_receive(:rm).with('/tmp/abc.mov')
+  
+    lambda {encoding.encode}.should raise_error(RVideo::TranscoderError)
+  end
+
+  it "should run correct ffmpeg command to encode to an flv for the flash player" do
+    encoding = mock_encoding_flv_flash
+    encoding.stub!(:parent_video).and_return(@video)
     transcoder = mock(RVideo::Transcoder)
     RVideo::Transcoder.should_receive(:new).and_return(transcoder)
     
-    @video.should_receive(:capture_thumbnail_and_upload_to_s3)
-    
-  encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.mp4.temp.audio.wav')
     transcoder.should_receive(:execute).with(
-      "ffmpeg -i $input_file$ -an -vcodec libx264 -crf 28 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 22 -y $output_file$", nil) # No need to test the 2nd parameter for recepie options which is tested in another test
-    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.mp4.temp.video.mp4')
+      "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 24 $resolution_and_padding$ -y $output_file$\nflvtool2 -U $output_file$", nil)
+    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.flv')
     
+    encoding.encode_flv_flash
+  end
+  
+  it "should run correct ffmpeg command to encode to an mp4 for the flash player" do
+    encoding = mock_encoding_mp4_aac_flash
+    encoding.stub!(:parent_video).and_return(@video)
+    transcoder = mock(RVideo::Transcoder)
+    RVideo::Transcoder.should_receive(:new).and_return(transcoder)
+    
+    transcoder.should_receive(:execute).with(
+      "ffmpeg -i $input_file$ -b $video_bitrate_in_bits$ -an -vcodec libx264 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 24 -y $output_file$", nil) # No need to test the 2nd parameter for recepie options which is tested in another test
+    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.mp4.temp.video.mp4')
+
     # Testing separate audio extraction and encoding for flash h264
     transcoder.should_receive(:execute).with(
       "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$", nil)
+    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.mp4.temp.audio.wav')
 
     # rm video file before we use MP4Box, otherwise we end up with multiple AV streams if the videos has been encoded more than once!
-    File.should_receive(:exists?).twice.with('/tmp/xyz.mp4').and_return(true)
-    FileUtils.should_receive(:rm).twice.with('/tmp/xyz.mp4')
+    File.should_receive(:exists?).with('/tmp/xyz.mp4').and_return(true)
+    FileUtils.should_receive(:rm).with('/tmp/xyz.mp4')
     
-    # Now upload it to S3
-    # Expected already above: File.should_receive(:exists?).with('/tmp/xyz.mp4').and_return(true)
-    encoding.should_receive(:upload_to_s3)
-    encoding.should_receive(:capture_thumbnail_and_upload_to_s3)
-    # Expected already above: FileUtils.should_receive(:rm).with('/tmp/xyz.mp4')
-    
-    encoding.should_receive(:status=).with("success")
-    encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
-    
-    encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
-    @video.should_receive(:send_status)
-    
-    encoding.encode
+    encoding.encode_mp4_aac_flash
   end
   
-  it "should encode to an unknown format" do
-    encoding = mock_encoding_unknown_format
+  it "should run correct ffmpeg command to encode to an unknown format" do
+    encoding = mock_encoding_flv_flash
     encoding.stub!(:parent_video).and_return(@video)
-    encoding.stub!(:save)
-    @video.should_receive(:fetch_from_s3)
-    
-    encoding.should_receive(:status=).with("processing")
-    
     transcoder = mock(RVideo::Transcoder)
     RVideo::Transcoder.should_receive(:new).and_return(transcoder)
     
-    @video.should_receive(:capture_thumbnail_and_upload_to_s3)
-    
     transcoder.should_receive(:execute).with(
-      "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 22 $resolution_and_padding$ -y $output_file$", nil)
-    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.xxx')
+      "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 24 $resolution_and_padding$ -y $output_file$", nil)
+    encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.flv')
     
-    # Now upload it to S3
-    File.should_receive(:exists?).with('/tmp/xyz.xxx').and_return(true)
-    encoding.should_receive(:upload_to_s3)
-    encoding.should_receive(:capture_thumbnail_and_upload_to_s3)
-    FileUtils.should_receive(:rm).with('/tmp/xyz.xxx')
-    
-    encoding.should_receive(:status=).with("success")
-    encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
-    
-    encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
-    @video.should_receive(:send_status)
-    
-    encoding.encode
+    encoding.encode_unknown_format
   end
   
-#   
   private
   
     def mock_profile

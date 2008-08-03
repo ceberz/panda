@@ -1,7 +1,7 @@
 class SimpleDB
   
   class Base
-    attr_accessor :key, :attributes
+    attr_accessor :key, :attributes, :new_record
   
     def self.establish_connection!(opts)
       @@connection = Amazon::SDB::Base.new(opts[:access_key_id], opts[:secret_access_key])
@@ -28,9 +28,10 @@ class SimpleDB
       end
     end
 
-    def initialize(key=nil, multimap_or_hash=nil)
+    def initialize(key=nil, multimap_or_hash=nil, new_record=true)
       self.key = (key || UUID.new)
       self.attributes = multimap_or_hash.nil? ? Amazon::SDB::Multimap.new : (multimap_or_hash.kind_of?(Hash) ? Amazon::SDB::Multimap.new(multimap_or_hash) : multimap_or_hash)
+      @new_record = new_record
     end
 
     def self.create(*values)
@@ -40,14 +41,23 @@ class SimpleDB
     end
 
     def self.create!(*values)
-      video = self.create(*values)
-      video.save
-      video
+      r = self.create(*values)
+      r.save
+      r
+    end
+    
+    def id
+      self.key
     end
     
     def get(key)
-      reload! if self.attributes.size == 0
+      reload! if self.attributes.size == 0 and @new_record == false
       self.attributes.coerce(self.attributes.get(key))
+    end
+    
+    def get_without_coerce(key)
+      reload! if self.attributes.size == 0
+      self.attributes.get(key)
     end
     
     def [](key)
@@ -61,9 +71,19 @@ class SimpleDB
     def []=(key, value)
       self.put(key, value)
     end
+    
+    def set_attributes(attrs)
+      attrs.each do |k,v|
+        self.send(%(#{k}=),v)
+      end
+    end
 
     def save
+      # self.updated_at = Time.now
+      # self.created_at = Time.now if @new_record == true
       self.class.domain.put_attributes(self.key, self.attributes, :replace => :all)
+      @new_record = false
+      true
     end
     
     def destroy!
@@ -76,13 +96,14 @@ class SimpleDB
     end
 
     def self.find(key)
-      self.new(key, self.domain.get_attributes(key).attributes)
+      self.new(key, self.domain.get_attributes(key).attributes, false)
     end
-
+    
+    # TODO: support next token
     def self.query(expr="", query_options={})
       result = []
       self.domain.query(query_options.merge({:expr => expr})).each do |i|
-        result << self.new(i.key, i.attributes)
+        result << self.new(i.key, i.attributes, false)
       end
       return result
     end
