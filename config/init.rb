@@ -20,7 +20,7 @@ end
 
 require "config" / "panda_init"
 
-dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda', 'gd_resize', 'map_to_hash', 'spec_eql_hash'
+dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda', 'gd_resize', 'map_to_hash', 'spec_eql_hash', 'error_sender'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
@@ -32,15 +32,7 @@ Merb::BootLoader.after_app_loads do
 
   unless Merb.environment == "test"
     require "config" / "aws"
-    
-    Merb::Mailer.config = {
-      :host=>'localhost',
-      :domain => 'pandastream.com',
-      :port=>'25'         
-      # :user=>'',
-      # :pass=>'',
-      # :auth=>:plain # :plain, :login, :cram_md5, the default is no auth
-    }
+    require "config" / "mailer" # If you want notification and encoding errors to be sent to you as well as logged
   end
 
 end

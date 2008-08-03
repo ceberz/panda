@@ -16,4 +16,8 @@ Panda::Config.use do |p|
   p[:sdb_videos_domain]      = "panda_videos"
   p[:sdb_users_domain]       = "panda_users"
   p[:sdb_profiles_domain]    = "panda_profiles"
+  p[:thumbnail_height_constrain] = 125
+  p[:notification_email]     = "me@mydomain.com" # Where notifications get sent to
+  p[:noreply_from]     = "no-reply@pandastream.com" # Where notifications come from
+  p[:notification_frequency] = 2
 end

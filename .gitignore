@@ -10,3 +10,6 @@ panda_*.god
 panda_nginx.conf
 log/*
 videos/*
+config/mailer.rb
+config/panda_init_*.rb
+panda_all_staging_nginx.conf

@@ -386,10 +386,7 @@ class Video < SimpleDB::Base
     response = http.request(req)
     
     unless response.code.to_i == 200 and response.body.match /ok/
-      Merb.logger.error "--> #{response.code} #{response.message} (#{response.body.length})"
-      Merb.logger.error "="*60
-      Merb.logger.error "#{response.body}"
-      Merb.logger.error "="*60
+      ErrorSender.log_and_email("#{response.code} #{response.message} (#{response.body.length})\n#{"="*60}\n#{response.body}\n#{"="*60}")
       
       raise NotificationError
     end
