@@ -8,22 +8,18 @@ loop do
   if video = Video.next_job
     begin
       video.encode
-    rescue  
-      Merb.logger.error "="*60
-      Merb.logger.error "ERROR ENCODING! #{$!}"
-      Merb.logger.error "="*60
-      
-      Merb.logger.error ""
-      
-      Merb.logger.error "PARENT ATTRS"
-      Merb.logger.error "="*60
-      Merb.logger.error video.parent.attributes.to_h.to_yaml
-      
-      Merb.logger.error ""
-      
-      Merb.logger.error "ENCODING ATTRS"
-      Merb.logger.error "="*60
-      Merb.logger.error video.attributes.to_h.to_yaml
+    rescue
+      ErrorSender.log_and_email("encoding error", "Error encoding #{self.key}
+
+#{$!}
+
+PARENT ATTRS
+
+#{"="*60}\n#{video.parent.attributes.to_h.to_yaml}\n#{"="*60}
+
+ENCODING ATTRS
+
+#{"="*60}\n#{video.attributes.to_h.to_yaml}\n#{"="*60}")
     end
   end
 end

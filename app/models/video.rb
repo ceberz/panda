@@ -386,7 +386,14 @@ class Video < SimpleDB::Base
     response = http.request(req)
     
     unless response.code.to_i == 200 and response.body.match /ok/
-      ErrorSender.log_and_email("#{response.code} #{response.message} (#{response.body.length})\n#{"="*60}\n#{response.body}\n#{"="*60}")
+      ErrorSender.log_and_email("notification error", "Error sending notification for parent video #{self.key} to #{self.state_update_url} (POST)
+
+REQUEST PARAMS
+#{"="*60}\n#{params.to_yaml}\n#{"="*60}
+
+RESPONSE
+#{response.code} #{response.message} (#{response.body.length})
+#{"="*60}\n#{response.body}\n#{"="*60}")
       
       raise NotificationError
     end
