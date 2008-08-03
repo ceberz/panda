@@ -9,7 +9,7 @@ loop do
     begin
       video.encode
     rescue
-      ErrorSender.log_and_email("encoding error", "Error encoding #{self.key}
+      ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
 
 #{$!}
 
