@@ -365,6 +365,7 @@ class Video < SimpleDB::Base
       self.parent_video.send_status_update_to_client
       self.notification = 'success'
       self.save
+      Merb.logger.info "Notification successfull"
     rescue
       # Increment num retries
       self.notification = self.notification.to_i + 1
@@ -374,7 +375,7 @@ class Video < SimpleDB::Base
   end
   
   def send_status_update_to_client
-    Merb.logger.debug "Sending notification to #{self.state_update_url}"
+    Merb.logger.info "Sending notification to #{self.state_update_url}"
     
     params = {"video" => self.show_response.to_yaml}
     
