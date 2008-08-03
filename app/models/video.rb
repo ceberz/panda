@@ -385,7 +385,7 @@ class Video < SimpleDB::Base
     req.form_data = params
     response = http.request(req)
     
-    unless response.code.to_i == 200 and response.body.match /ok/
+    unless response.code.to_i == 200# and response.body.match /ok/
       ErrorSender.log_and_email("notification error", "Error sending notification for parent video #{self.key} to #{self.state_update_url} (POST)
 
 REQUEST PARAMS
