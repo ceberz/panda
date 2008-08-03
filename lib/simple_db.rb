@@ -65,6 +65,7 @@ class SimpleDB
     end
 
     def put(key, value)
+      # TODO: putting int 0 shouldn't put nil to the db, but store the actual int 0
       self.attributes.put(key, value, :replace => true)
     end
     
