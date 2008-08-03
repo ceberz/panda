@@ -7,6 +7,8 @@ loop do
   Merb.logger.debug "Checking for messages... #{Time.now}"
   if video = Video.next_job
     begin
+      # Wait for stuff to show up on S3 and SimpleDB
+      sleep 10
       video.encode
     rescue
       ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}

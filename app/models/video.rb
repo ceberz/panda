@@ -153,7 +153,7 @@ class Video < SimpleDB::Base
     begin
       retryable(:tries => 5) do
         S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
-        sleep 1
+        sleep 3
       end
     rescue
       Merb.logger.error "Error uploading #{self.filename} to S3"
@@ -170,7 +170,7 @@ class Video < SimpleDB::Base
           Merb.logger.info "fetch_from_s3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
-        sleep 1
+        sleep 3
       end
     rescue
       Merb.logger.error "Error fetching #{self.filename} from S3"
@@ -184,7 +184,7 @@ class Video < SimpleDB::Base
     begin
       retryable(:tries => 5) do
         S3VideoObject.delete(self.filename)
-        sleep 1
+        sleep 3
       end
     rescue
       Merb.logger.error "Error deleting #{self.filename} from S3"
@@ -541,6 +541,7 @@ RESPONSE
   end
   
   def encode
+    raise "You can only encode encodings" unless self.encoding?
     self.status = "processing"
     self.save
     
