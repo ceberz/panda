@@ -24,7 +24,7 @@ class Video < SimpleDB::Base
   
   # Only parent videos (no encodings)
   def self.all
-    self.query("['status' = 'original']")
+    self.query("['status' = 'original'] intersection ['created_at' != '']", :load_attrs => true)
   end
   
   def self.recent_videos
