@@ -24,7 +24,7 @@ class Video < SimpleDB::Base
   
   # Only parent videos (no encodings)
   def self.all
-    self.query("['status' = 'original'] intersection ['created_at' != '']", :load_attrs => true)
+    self.query("['status' = 'original'] intersection ['created_at' != ''] sort 'created_at' desc", :load_attrs => true)
   end
   
   def self.recent_videos
@@ -32,7 +32,7 @@ class Video < SimpleDB::Base
   end
   
   def self.recent_encodings
-    self.query("['encoded_at_desc' > '0'] intersection ['status' = 'success'] sort 'encoded_at' desc", :max_results => 10, :load_attrs => true)
+    self.query("['status' = 'success'] intersection ['encoded_at' != ''] sort 'encoded_at' desc", :max_results => 10, :load_attrs => true)
   end
   
   def self.queued_encodings
