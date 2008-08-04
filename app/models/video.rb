@@ -32,7 +32,7 @@ class Video < SimpleDB::Base
   end
   
   def self.recent_encodings
-    self.query("['encoded_at_desc' > '0'] intersection ['status' = 'success']", :max_results => 10, :load_attrs => true)
+    self.query("['encoded_at_desc' > '0'] intersection ['status' = 'success'] sort 'encoded_at' desc", :max_results => 10, :load_attrs => true)
   end
   
   def self.queued_encodings

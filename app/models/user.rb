@@ -1,6 +1,6 @@
 class User < SimpleDB::Base
   set_domain Panda::Config[:sdb_users_domain]
-  properties :password, :email, :salt, :crypted_password, :api_key
+  properties :password, :email, :salt, :crypted_password, :api_key, :updated_at, :created_at
   attr_accessor :password, :password_confirmation
   
   def login

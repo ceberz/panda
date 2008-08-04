@@ -80,8 +80,8 @@ class SimpleDB
     end
 
     def save
-      # self.updated_at = Time.now
-      # self.created_at = Time.now if @new_record == true
+      self.updated_at = Time.now
+      self.created_at = Time.now if @new_record == true
       self.class.domain.put_attributes(self.key, self.attributes, :replace => :all)
       @new_record = false
       true
