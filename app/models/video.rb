@@ -548,14 +548,13 @@ RESPONSE
     
     begun_encoding = Time.now
     
-    parent_obj = self.parent_video
-    Merb.logger.info "(#{Time.now.to_s}) Encoding #{self.key}"
-    
-    encoding = self
-    
-    parent_obj.fetch_from_s3
-
     begin
+      encoding = self
+      parent_obj = self.parent_video
+      Merb.logger.info "(#{Time.now.to_s}) Encoding #{self.key}"
+    
+      parent_obj.fetch_from_s3
+
       if self.container == "flv" and self.player == "flash"
         self.encode_flv_flash
       elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"

@@ -2,8 +2,6 @@
 
 Merb.logger.info 'Encoder awake!'
 
-AWS::S3::Base.disconnect! # Only connect to S3 when we need to
-
 loop do
   sleep 3
   Merb.logger.debug "Checking for messages... #{Time.now}"
@@ -11,17 +9,9 @@ loop do
     begin
       # Wait for stuff to show up on S3 and SimpleDB
       sleep 10
-      
-      AWS::S3::Base.establish_connection!(
-        :access_key_id     => Panda::Config[:access_key_id],
-        :secret_access_key => Panda::Config[:secret_access_key]
-      )
-      
       video.encode
-      AWS::S3::Base.disconnect!
     rescue  
       begin
-        AWS::S3::Base.disconnect!
         ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
 
 #{$!}
