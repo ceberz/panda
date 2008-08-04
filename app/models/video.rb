@@ -1,8 +1,6 @@
 class Video < SimpleDB::Base
   set_domain Panda::Config[:sdb_videos_domain]
-  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :queued_at, :started_encoding_at, :encoding_time, :encoded_at, :encoded_at_desc, :last_notification_at, :notification, :updated_at, :created_at
-  
-  # TODO: remove encoded_at_desc and use sdb desc sort instead
+  properties :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :queued_at, :started_encoding_at, :encoding_time, :encoded_at, :last_notification_at, :notification, :updated_at, :created_at
   
   # TODO: state machine for status
   # An original video can either be 'empty' if it hasn't had the video file uploaded, or 'original' if it has
@@ -24,7 +22,7 @@ class Video < SimpleDB::Base
   
   # Only parent videos (no encodings)
   def self.all
-    self.query("['status' = 'original'] intersection ['created_at' != ''] sort 'created_at' desc", :load_attrs => true)
+    self.query("['status' = 'original'] intersection ['created_at' != ''] sort 'created_at' desc", :load_attrs => true) # TODO: Don't throw an exception if attrs for a record in the search can't be found - it probably means its just been deleted
   end
   
   def self.recent_videos
@@ -127,13 +125,6 @@ class Video < SimpleDB::Base
     %(http://#{Panda::Config[:videos_domain]}/#{self.thumbnail})
   end
   
-  # SimpleDB returns things in ascending order only, so to order by desc we have to take the value away from a big number and store it in alother column. See here for more info: http://developer.amazonwebservices.com/connect/thread.jspa?threadID=19939&tstart=0
-  # TODO: Implement this as part of the simple_db.rb lib.
-  def set_encoded_at(v)
-    self.encoded_at = v
-    self.encoded_at_desc = 1000000000000 - v.to_i
-  end
-  
   # Encding attr helpers
   # ====================
   
@@ -152,6 +143,7 @@ class Video < SimpleDB::Base
   def upload_to_s3
     begin
       retryable(:tries => 5) do
+        Merb.logger.info "Upload to S3"
         S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
         sleep 3
       end
@@ -167,7 +159,7 @@ class Video < SimpleDB::Base
     begin
       retryable(:tries => 5) do
         File.open(self.tmp_filepath, 'w') do |file|
-          Merb.logger.info "fetch_from_s3"
+          Merb.logger.info "Fetch from S3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
         sleep 3
@@ -183,6 +175,7 @@ class Video < SimpleDB::Base
   def delete_from_s3
     begin
       retryable(:tries => 5) do
+        Merb.logger.info "Deleting #{self.key} from S3"
         S3VideoObject.delete(self.filename)
         sleep 3
       end
@@ -312,7 +305,7 @@ class Video < SimpleDB::Base
   # ===
   
   def show_response
-    # :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :encoded_at, :encoded_at_desc, :updated_at, :created_at
+    # :filename, :original_filename, :parent, :status, :duration, :container, :width, :height, :video_codec, :video_bitrate, :fps, :audio_codec, :audio_bitrate, :audio_sample_rate, :profile, :profile_title, :player, :encoding_time, :encoded_at, :updated_at, :created_at
     
     r = {:video => {
         :id => self.key,
@@ -492,6 +485,7 @@ RESPONSE
   end
   
   def encode_flv_flash
+    Merb.logger.info "Encoding with encode_flv_flash"
     transcoder = RVideo::Transcoder.new
     recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 24 $resolution_and_padding$ -y $output_file$"
     recipe += "\nflvtool2 -U $output_file$"
@@ -499,6 +493,7 @@ RESPONSE
   end
   
   def encode_mp4_aac_flash
+    Merb.logger.info "Encoding with encode_mp4_aac_flash"
     transcoder = RVideo::Transcoder.new
     # Just the video without audio
     temp_video_output_file = "#{self.tmp_filepath}.temp.video.mp4"
@@ -535,6 +530,7 @@ RESPONSE
   end
   
   def encode_unknown_format
+    Merb.logger.info "Encoding with encode_unknown_format"
     transcoder = RVideo::Transcoder.new
     recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 24 $resolution_and_padding$ -y $output_file$"
     Merb.logger.info "Unknown encoding format given but trying to encode anyway."
@@ -568,10 +564,11 @@ RESPONSE
       
       self.notification = 0
       self.status = "success"
-      self.set_encoded_at(Time.now)
+      self.encoded_at = Time.now
       self.encoding_time = (Time.now - begun_encoding).to_i
       self.save
 
+      Merb.logger.info "Removing tmp video files"
       FileUtils.rm self.tmp_filepath
       FileUtils.rm parent_obj.tmp_filepath
       
