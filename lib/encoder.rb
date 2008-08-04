@@ -2,6 +2,8 @@
 
 Merb.logger.info 'Encoder awake!'
 
+AWS::S3::Base.disconnect! # Only connect to S3 when we need to
+
 loop do
   sleep 3
   Merb.logger.debug "Checking for messages... #{Time.now}"
@@ -9,9 +11,18 @@ loop do
     begin
       # Wait for stuff to show up on S3 and SimpleDB
       sleep 10
+      
+      AWS::S3::Base.establish_connection!(
+        :access_key_id     => Panda::Config[:access_key_id],
+        :secret_access_key => Panda::Config[:secret_access_key]
+      )
+      
       video.encode
-    rescue
-      ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
+      AWS::S3::Base.disconnect!
+    rescue  
+      begin
+        AWS::S3::Base.disconnect!
+        ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
 
 #{$!}
 
@@ -22,6 +33,9 @@ PARENT ATTRS
 ENCODING ATTRS
 
 #{"="*60}\n#{video.attributes.to_h.to_yaml}\n#{"="*60}")
+      rescue
+        Merb.logger.error "Error sending error using ErrorSender.log_and_email - very erroneous! (#{$!})"
+      end
     end
   end
 end

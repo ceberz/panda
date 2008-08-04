@@ -6,10 +6,6 @@ module Panda
         AWS::S3::Bucket.create(name)
       end
       
-      def create_sqs_queue(name)
-        SQS.create_queue(name)
-      end
-      
       def create_sdb_domain(name)
        SimpleDB::Base.connection.create_domain(name)
       end

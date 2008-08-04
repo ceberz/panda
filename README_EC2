@@ -32,13 +32,11 @@ Create buckets, domains and queues
 ----------------------------------
 
 * S3 bucket for video files (tip: name this a domain such videos.pandastream.com and you can setup a CNAME to S3)
-* SQS queue for the encoding queue
 * SimpleDB domains for videos, profiles and admin users
 
 Login to the console with `merb -i` and run the following, probably replacing names with your own:
 
     Panda::Setup.create_s3_bucket  'videos.pandastream.com'
-    Panda::Setup.create_sqs_queue  'panda_encoding'
     Panda::Setup.create_sdb_domain 'panda_videos'
     Panda::Setup.create_sdb_domain 'panda_profiles'
     Panda::Setup.create_sdb_domain 'panda_users'
