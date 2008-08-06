@@ -144,7 +144,7 @@ class Video < SimpleDB::Base
   		var s1 = new SWFObject("http://#{Panda::Config[:videos_domain]}/player.swf","ply","#{self.width}","#{self.height}","9","#FFFFFF");
   		s1.addParam("allowfullscreen","true");
   		s1.addParam("allowscriptaccess","always");
-  		s1.addParam("flashvars","file=#{self.url}&skin=http://#{Panda::Config[:videos_domain]}/kleur.swf&controlbar=over&image=#{self.screenshot_url}");
+  		s1.addParam("flashvars","file=#{self.url}&skin=http://#{Panda::Config[:videos_domain]}/kleur.swf&controlbar=over&fullscreen=true&image=#{self.screenshot_url}");
   		s1.write("flash_container");
   	</script>)
 	end
