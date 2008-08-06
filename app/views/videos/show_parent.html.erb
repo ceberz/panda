@@ -27,7 +27,7 @@
 	
 	<div class="video">
 	<% if enc.status == "success" %>
-		<%= enc.embed_html %>
+		<%= enc.embed_js %>
 	<% elsif enc.status == "error" %>
 	    <div class="response">There was an error encoding to this format. We have been notified and will look into the issue immediately.</div>
 	<% else %>
@@ -37,6 +37,6 @@
 	
 	<div class="embed_code">
 		<h4>Embed code</h4>
-		<textarea cols="50" rows="6"><%= enc.embed_html %></textarea>
+		<textarea cols="50" rows="6"><%= enc.embed_js %></textarea>
 	</div>
 <% end %>
