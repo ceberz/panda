@@ -499,7 +499,7 @@ RESPONSE
   def encode_flv_flash
     Merb.logger.info "Encoding with encode_flv_flash"
     transcoder = RVideo::Transcoder.new
-    recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 24 -threads 4 $resolution_and_padding$ -y $output_file$"
+    recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 24 $resolution_and_padding$ -y $output_file$"
     recipe += "\nflvtool2 -U $output_file$"
     transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
     Merb.logger.info transcoder.executed_commands
@@ -546,7 +546,7 @@ RESPONSE
   def encode_unknown_format
     Merb.logger.info "Encoding with encode_unknown_format"
     transcoder = RVideo::Transcoder.new
-    recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 24 -threads 4 $resolution_and_padding$ -y $output_file$"
+    recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 24 $resolution_and_padding$ -y $output_file$"
     Merb.logger.info "Unknown encoding format given but trying to encode anyway."
     transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
     Merb.logger.info transcoder.executed_commands
