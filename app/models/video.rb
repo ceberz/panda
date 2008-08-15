@@ -138,15 +138,25 @@ class Video < SimpleDB::Base
   end
   
   def embed_js
-    %(<div id="flash_container"><a href="http://www.macromedia.com/go/getflashplayer">Get the Flash Player</a> to see this player.</div>
-  	<script type="text/javascript" src="http://#{Panda::Config[:videos_domain]}/swfobject.js"></script>
+    return nil unless self.encoding?
+  	%(
+  	<div id="flash_container_#{self.key[0..4]}"><a href="http://www.macromedia.com/go/getflashplayer">Get the latest Flash Player</a> to watch this video.</div>
   	<script type="text/javascript">
-  		var s1 = new SWFObject("http://#{Panda::Config[:videos_domain]}/player.swf","ply","#{self.width}","#{self.height}","9","#FFFFFF");
-  		s1.addParam("allowfullscreen","true");
-  		s1.addParam("allowscriptaccess","always");
-  		s1.addParam("flashvars","file=#{self.url}&skin=http://#{Panda::Config[:videos_domain]}/kleur.swf&controlbar=over&fullscreen=true&image=#{self.screenshot_url}");
-  		s1.write("flash_container");
-  	</script>)
+      var flashvars = {};
+      
+      flashvars.file = "#{self.url}";
+      flashvars.image = "#{self.screenshot_url}";
+      flashvars.width = "#{self.width}";
+      flashvars.height = "#{self.height}";
+      flashvars.usefullscreen = "true";
+      flashvars.skin = "http://#{Panda::Config[:videos_domain]}/kleur.swf";
+      flashvars.controlbar = "over";
+      var params = {wmode:"transparent"};
+      var attributes = {};
+      attributes.align = "top";
+      swfobject.embedSWF("http://#{Panda::Config[:videos_domain]}/player.swf", "flash_container_#{self.key[0..4]}", "#{w}", "#{h}", "9.0.115", "http://#{Panda::Config[:videos_domain]}/expressInstall.swf", flashvars, params, attributes);
+  	</script>
+  	)
 	end
   
   # S3
