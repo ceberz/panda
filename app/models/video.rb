@@ -154,7 +154,7 @@ class Video < SimpleDB::Base
       var params = {wmode:"transparent"};
       var attributes = {};
       attributes.align = "top";
-      swfobject.embedSWF("http://#{Panda::Config[:videos_domain]}/player.swf", "flash_container_#{self.key[0..4]}", "#{w}", "#{h}", "9.0.115", "http://#{Panda::Config[:videos_domain]}/expressInstall.swf", flashvars, params, attributes);
+      swfobject.embedSWF("http://#{Panda::Config[:videos_domain]}/player.swf", "flash_container_#{self.key[0..4]}", "#{self.width}", "#{self.height}", "9.0.115", "http://#{Panda::Config[:videos_domain]}/expressInstall.swf", flashvars, params, attributes);
   	</script>
   	)
 	end
