@@ -99,7 +99,7 @@ class Videos < Application
       @video = Video.find(params[:id])
       @video.filename = @video.key + File.extname(params[:file][:filename])
       FileUtils.mv params[:file][:tempfile].path, @video.tmp_filepath
-      @video.original_filename = params[:file][:filename]
+      @video.original_filename = params[:file][:filename].split("\\\\").last # Split out any directory path Windows adds in
       @video.process
       @video.status = "original"
       @video.save
