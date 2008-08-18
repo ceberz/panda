@@ -1,0 +1,8 @@
+<p>
+	<label>Video format</label>
+	<select name="panda_video[max_format]">
+	<% Format.find_all.each do |f| %>
+		<option value="<%= f.id %>"><%= f.full_name %></option>
+	<% end %>
+	</select>
+</p>

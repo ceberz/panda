@@ -1,0 +1,25 @@
+<table class="videos">
+	<tr>
+		<th>Filename</th>
+		<th>Uploaded at</th>
+		<th></th>
+	</tr>
+<% videos.each do |v| %>
+	<tr>
+		<td>
+			<a href="/videos/<%= v.key %>" class="filename"><%= v.original_filename || "No filename" %></a>
+			<span class="token"><%= v.duration_str %></span>
+		</td>
+		<td><%= v.created_at.strftime("%a, %d %b %Y %H:%M:%S") rescue "" %></td>
+		<td></td>
+	</tr>
+	
+	<% v.encodings.each do |e| %>
+  	<tr>
+  		<td><a href="/videos/<%= e.key %>" class="filename"><%= e.profile_title %></a></td>
+  		<td></td>
+  		<td class="<%= e.status %>"><%= e.status %></td>
+  	</tr>
+  <% end %>
+<% end %>
+</table>

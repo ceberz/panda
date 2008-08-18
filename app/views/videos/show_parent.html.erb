@@ -1,0 +1,42 @@
+<ul class="actions">
+  <li><%= link_to "Add to queue", "/videos/#{@video.key}/add_to_queue" %></li>
+  <li>
+    <% form_tag(:action => url(:video, :id => @video.key), :method => :delete) do %>
+      <%= submit_button "Delete video", :onclick => "var agree=confirm('This will delete the original video file and all its encodings');if (agree) {return true} else {return false}" %>
+    <% end %>
+</ul>
+
+<h2><%= @video.original_filename %></h2>
+
+<dl>
+  <dt>ID:</dt>
+  <dd><%= @video.key %></dd>
+  <dt>Status:</dt>
+  <dd><%= @video.status %></dd>
+  <dt>Original filename:</dt>
+  <dd><%= @video.original_filename %></dd>
+  <dt>Resolution:</dt>
+  <dd><%= @video.resolution %></dd>
+  <dt>Duration:</dt>
+  <dd><%= @video.duration_str %></dd>
+</dl>
+
+
+<% @video.encodings.each do |enc| %>
+	<h3><a href="/videos/<%= enc.key %>"><%= enc.profile_title %></a></h3>
+	
+	<div class="video">
+	<% if enc.status == "success" %>
+		<%= enc.embed_js %>
+	<% elsif enc.status == "error" %>
+	    <div class="response">There was an error encoding to this format. We have been notified and will look into the issue immediately.</div>
+	<% else %>
+		<div class="response">Once uploaded and encoded the video will be displayed here.</div>
+	<% end %>
+	</div>
+	
+	<div class="embed_code">
+		<h4>Embed code</h4>
+		<textarea cols="50" rows="6"><%= enc.embed_js %></textarea>
+	</div>
+<% end %>

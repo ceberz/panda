@@ -1,0 +1,15 @@
+<div class="dashboard">
+	<div id="new_video">
+		<h2><a href="#" onclick="window.open('/videos/new', 'panda_upload', 'toolbar=0,scrollbars=0,location=0,statusbar=0,menubar=0,resizable=0,width=395,height=35');return false;">Upload a test video</a></h2>
+	</div>
+
+	<h2>Encoding queue</h2>
+
+	<%= partial "encodings/encoding_queue_list", :encodings => @queued_encodings %>
+
+	<h2>Recently encoded</h2>
+
+	<%= partial "encodings/recently_encoded_list", :encodings => @recent_encodings %>
+
+	<div class="more_videos"><a href="/videos">View all videos</a></div>
+</div>

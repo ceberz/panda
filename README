@@ -1,0 +1,119 @@
+Panda is a Merb app which runs on a special EC2 instance to encode videos for you. Uploaded videos are stored on S3 with a small amount of info kept in SimpleDB. The REST API makes it easy to integrate user video uploading into your web application.
+
+How does Panda work?
+====================
+
+1. Video is uploaded to panda
+2. Panda checks the video's metadata, uploads the raw file to S3 and adds it to the encoding queue
+3. The encoder application picks the encoding job off the queue when it's free and encodes the video to all possible formats
+4. Panda sends a callback to your web application notifying you the video has been encoded
+5. You use the S3 url of the encoding you want to show to your users
+
+Installation and setup
+======================
+
+Gems
+----
+
+Merb 0.9.2
+S3 (http://amazon.rubyforge.org/)
+SimpleDB (http://nytimes.rubyforge.org/amazon_sdb/)
+
+gem install merb merb_helpers activesupport RubyInline amazon_sdb sqs
+
+Other deps
+----------
+
+# libjpeg
+http://www.ijg.org/
+http://www.libgd.org/FAQ#gd_keeps_saying_it_can.27t_find_png_or_jpeg_support._I_did_install_libpng_and_libjpeg._What_am_I_missing.3F
+
+# libgd
+http://www.libgd.org/Main_Page
+
+RVideo
+------
+
+Build gem from svn://rubyforge.org/var/svn/rvideo/trunk with `rake install_gem`.
+Then `sudo cp lib/rvideo/tools/*.rb  /Library/Ruby/Gems/1.8/gems/rvideo-0.9.4/lib/rvideo/tools/` on OS X.
+
+FFMPEG
+-----
+
+Available in all good package repositories including Darwin Ports.
+
+If you're developing on Mac OS X, you can grab ffmpeg out of the ffmpegX application instead of compiling it: http://www.macosxhints.com/article.php?story=20061220082125312
+
+Configuration
+=============
+
+Encoding profiles
+-----------------
+
+    Profile.create!(:title => "MP4 SD",   :container => "mp4", :video_codec => "mpeg4", :video_bitrate => 300, :audio_codec => "aac", :audio_bitrate => 48, :audio_sample_rate => 48000, :width => 320, :height => 240, :fps => 24, :position => 2, :player => nil)
+
+    Profile.create!(:title => "Flash video SD",  :container => "flv", :video_bitrate => 300, :audio_bitrate => 48, :width => 320, :height => 240, :fps => 24, :position => 0, :player => "flash")
+    Profile.create!(:title => "Flash video HI",  :container => "flv", :video_bitrate => 400, :audio_bitrate => 48, :width => 480, :height => 360, :fps => 24, :position => 1, :player => "flash")
+    
+    Profile.create!(:title => "Flash h264 SD",   :container => "mp4", :video_bitrate => 300, :audio_codec => "aac", :audio_bitrate => 48, :width => 320, :height => 240, :fps => 24, :position => 2, :player => "flash")
+    
+    
+    Profile.create!(:title => "Flash h264 HI",   :container => "mp4", :video_bitrate => 400, :audio_bitrate => 48, :audio_coded => "aac", :width => 480, :height => 360, :fps => 24, :position => 3, :player => "flash")
+    Profile.create!(:title => "Flash h264 480p", :container => "mp4", :video_bitrate => 600, :audio_bitrate => 48, :audio_coded => "aac", :width => 852, :height => 480, :fps => 24, :position => 4, :player => "flash")
+
+Further information
+===================
+
+Investigating encoding errors
+-----------------------------
+
+When an encoding fails the status of the video is set to 'error' and the output of ffmpeg is saved on S3 with the filename video_token.error
+
+SimpleDB schemas
+================
+
+Videos
+------
+
+    filename # 976a4b00-16cc-012b-7316-001ec2b5c0e1.flv
+    original_filename # sneezing_panda.flv
+    parent
+
+    status # original, queued, processing, done, error
+
+    duration
+    container
+    width
+    height
+
+    video_codec
+    video_bitrate
+    fps
+    audio_codec
+    audio_sample_rate
+
+    profile # id of encoding profile used
+    profile_title
+
+    updated_at
+    created_at
+
+Encoding profiles
+-----------------
+
+    title
+
+    container
+    width
+    height
+
+    video_codec
+    video_bitrate
+    fps
+    audio_codec
+    audio_bitrate
+    audio_sample_rate
+
+    updated_at
+    created_at
+

@@ -1,0 +1,27 @@
+worker_processes  1;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+        upload_progress proxied 1m;
+
+        server {
+                listen 80;
+                server_name myapp.com;
+                root /usr/local/www/panda;
+
+                location / {
+                        proxy_pass http://127.0.0.1:4001;
+#                       proxy_redirect default;
+                        track_uploads proxied 30s;
+                        client_max_body_size 500m;
+                }
+
+                location ^~ /progress {
+                        report_uploads proxied;
+                }
+        }
+}

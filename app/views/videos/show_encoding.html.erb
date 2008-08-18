@@ -1,0 +1,42 @@
+<h2><%= @video.original_filename %></h2>
+
+<dl>
+	<dt>ID:</dt>
+	<dd><%= @video.key %></dd>
+  <dt>Status:</dt>
+  <dd><%= @video.status %></dd>
+	<dt>Original filename:</dt>
+	<dd><%= @video.original_filename %></dd>
+	<dt>Resolution:</dt>
+	<dd><%= @video.resolution %></dd>
+	<dt>Duration:</dt>
+	<dd><%= @video.duration_str %></dd>
+</dl>
+
+<dl>
+  <dt>Parent:</dt>
+  <dd><a href="/videos/<%= @video.parent %>"><%= @video.parent %></a></dd>
+  <dt>Profile:</dt>
+  <dd><%= @video.profile_title %> (<%= @video.profile %>)</dd>
+  <dt>Encoded at:</dt>
+  <dd><%= @video.encoded_at %></dd>
+  <dt>Encoding time:</dt>
+  <dd><%= @video.encoding_time %>s</dd>
+</dl>
+
+	<h3><%= @video.profile_title %></h3>
+	
+	<div class="video">
+	<% if @video.status == "success" %>
+		<%= @video.embed_js %>
+	<% elsif @video.status == "error" %>
+	    <div class="response">There was an error encoding to this format. We have been notified and will look into the issue immediately.</div>
+	<% else %>
+		<div class="response">Once uploaded and @videooded the video will be displayed here.</div>
+	<% end %>
+	</div>
+	
+	<div class="embed_code">
+		<h4>Embed code</h4>
+		<textarea cols="50" rows="6"><%= @video.embed_js %></textarea>
+	</div>
