@@ -42,9 +42,14 @@ Login to the console with `merb -i` and run the following, probably replacing na
     Panda::Setup.create_sdb_domain 'panda_users'
 
     S3VideoObject.store("flvplayer.swf", File.open("flvplayer.swf"), :access => :public_read)
-    S3VideoObject.store('player.swf', open('player.swf'), :access => :public_read)
-    S3VideoObject.store('kleur.swf', open('kleur.swf'), :access => :public_read)
-    S3VideoObject.store('swfobject.js', open('swfobject.js'), :access => :public_read)
+    S3VideoObject.store('swfobject.js', open('public/javascripts/swfobject.js'), :access => :public_read)
+    
+Custom player and swfobject2
+
+    S3VideoObject.store('player.swf', open('public/player.swf'), :access => :public_read)
+    S3VideoObject.store('kleur.swf', open('public/kleur.swf'), :access => :public_read)
+    S3VideoObject.store('swfobject2.js', open('public/javascripts/swfobject2.js'), :access => :public_read)
+    S3VideoObject.store('expressInstall.swf', open('public/expressInstall.swf'), :access => :public_read)
     
     
 Create first admin user

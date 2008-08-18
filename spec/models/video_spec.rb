@@ -27,7 +27,7 @@ describe Video do
   # =======
   
   it "self.all" do
-    Video.should_receive(:query).with("['status' = 'original']")
+    Video.should_receive(:query).with("['status' = 'original'] intersection ['created_at' != ''] sort 'created_at' desc", {:load_attrs=>true})
     
     Video.all
   end
@@ -39,7 +39,7 @@ describe Video do
   end
   
   it "self.recent_encodings" do
-    Video.should_receive(:query).with("['encoded_at_desc' > '0'] intersection ['status' = 'success']", :max_results => 10, :load_attrs => true)
+    Video.should_receive(:query).with("['status' = 'success']", :max_results => 10, :load_attrs => true)
     
     Video.recent_encodings
   end
@@ -310,8 +310,8 @@ describe Video do
     @video.should_receive(:send_status_update_to_client).and_raise(Video::NotificationError)
     
     encoding.should_receive(:last_notification_at=).with(an_instance_of(Time))
-    encoding.should_receive(:notification).and_return(3)
-    encoding.should_receive(:notification=).with(4)
+    encoding.should_receive(:notification).twice().and_return(1)
+    encoding.should_receive(:notification=).with(2)
     encoding.should_receive(:save)
     
     lambda {encoding.send_notification}.should raise_error(Video::NotificationError)
@@ -388,7 +388,7 @@ describe Video do
     
     encoding.should_receive(:notification=).with(0)
     encoding.should_receive(:status=).with("success")
-    encoding.should_receive(:set_encoded_at).with(an_instance_of(Time))
+    encoding.should_receive(:encoded_at=).with(an_instance_of(Time))
     encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
     # encoding.should_receive(:save) expected twice above
     
@@ -434,7 +434,7 @@ describe Video do
     RVideo::Transcoder.should_receive(:new).and_return(transcoder)
     
     transcoder.should_receive(:execute).with(
-      "ffmpeg -i $input_file$ -b $video_bitrate_in_bits$ -an -vcodec libx264 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 24 -y $output_file$", nil) # No need to test the 2nd parameter for recepie options which is tested in another test
+      "ffmpeg -i $input_file$ -b $video_bitrate_in_bits$ -an -vcodec libx264 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 24 -threads 4 -y $output_file$", nil) # No need to test the 2nd parameter for recepie options which is tested in another test
     encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.mp4.temp.video.mp4')
 
     # Testing separate audio extraction and encoding for flash h264

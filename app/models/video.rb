@@ -43,7 +43,7 @@ class Video < SimpleDB::Base
   end
   
   def self.outstanding_notifications
-    self.query("['notification' != 'success'] intersection ['status' = 'success' or 'status' = 'error']") #  sort 'last_notification_at' asc
+    self.query("['notification' != 'success' and 'notification' != 'error'] intersection ['status' = 'success' or 'status' = 'error']") #  sort 'last_notification_at' asc
   end
   
   # def self.recently_completed_videos
@@ -383,7 +383,11 @@ class Video < SimpleDB::Base
       Merb.logger.info "Notification successfull"
     rescue
       # Increment num retries
-      self.notification = self.notification.to_i + 1
+      if self.notification.to_i >= Panda::Config[:notification_retries]
+        self.notification = 'error'
+      else
+        self.notification = self.notification.to_i + 1
+      end
       self.save
       raise
     end
