@@ -36,13 +36,13 @@ function objToString(o) {
         } else {
             $('#uploading').hide();
             if (data.error == "NotValid") {
-                $('#error').text("This video upload was not valid. Please try beginning the upload process again.");
+                $('#error').html("This video upload was not valid. Please try beginning the upload process again.");
             } else if (data.error == "FormatNotRecognised") {
                 $('#uploader').show();
-                $('#error').text('The video format was not recognised. Please ensure that your video follows the <a href="http://pandastream.com/docs/upload_format_guidelines" target="_blank">upload format guidelines</a>.');
+                $('#error').html('The video format was not recognised. Please ensure that your video follows the <a href="http://pandastream.com/docs/upload_format_guidelines" target="_blank">upload format guidelines</a>.');
             } else {
                 $('#uploader').show();
-                $('#error').text('Unfortunately there was an error uploading your video. We have been notified of this issue. Please try uploading your video again shortly.');
+                $('#error').html('Unfortunately there was an error uploading your video. We have been notified of this issue. Please try uploading your video again shortly.');
             }
         }
     }
