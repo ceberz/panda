@@ -35,9 +35,8 @@ class SimpleDB
     end
 
     def self.create(*values)
-      key = UUID.new
-      attributes = values.nil? ? Amazon::SDB::Multimap.new : Amazon::SDB::Multimap.new(*values)
-      self.new(key, attributes)
+      attributes = values.nil? ? Amazon::SDB::Multimap.new : Amazon::SDB::Multimap.new(*values) # TODO: Just pass values onto new
+      self.new(nil, attributes)
     end
 
     def self.create!(*values)
@@ -56,7 +55,7 @@ class SimpleDB
     end
     
     def get_without_coerce(key)
-      reload! if self.attributes.size == 0
+      reload! if self.attributes.size == 0 # TOOD: add ` and @new_record == false`
       self.attributes.get(key)
     end
     
@@ -65,7 +64,6 @@ class SimpleDB
     end
 
     def put(key, value)
-      # TODO: putting int 0 shouldn't put nil to the db, but store the actual int 0
       self.attributes.put(key, value, :replace => true)
     end
     
@@ -92,7 +90,7 @@ class SimpleDB
     end
     
     def reload!
-      item = self.class.domain.get_attributes(@key)
+      item = self.class.domain.get_attributes(self.key)
       self.attributes = item.attributes
     end
 
