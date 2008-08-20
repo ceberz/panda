@@ -1,5 +1,3 @@
-jQuery.nginxUploadProgress.inum = 0;
-
 jQuery.nginxUploadProgress = function(settings) {
 	settings = jQuery.extend({
 		interval: 2000,
@@ -37,6 +35,8 @@ jQuery.nginxUploadProgress = function(settings) {
   // bind form using 'ajaxForm' 
   $('#upload').ajaxForm(options);
 };
+
+jQuery.nginxUploadProgress.inum = 0;
 
 jQuery.nginxUploadProgressFetch = function(e, nginx_progress_url, progress_bar_id, uuid) {
 	// window.console.log("fetcing progress for "+uuid)
