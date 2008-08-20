@@ -78,3 +78,42 @@ jQuery.nginxUploadProgressFetch = function(e, nginx_progress_url, progress_bar_i
 		}
 	});
 };
+
+// prepare the form when the DOM is ready 
+$(document).ready(function() { 
+    var options = { 
+        beforeSubmit: showRequest,  // pre-submit callback 
+        complete:     showResponse,  // post-submit callback 
+        dataType:     'json'        // 'xml', 'script', or 'json' (expected server response type) 
+    }; 
+
+    // bind form using 'ajaxForm' 
+    $('#upload').ajaxForm(options); 
+}); 
+
+// pre-submit callback 
+function showRequest(formData, jqForm, options) {
+    $('#uploader').hide()
+    $('#uploading').show()
+    jQuery.nginxUploadProgress({uuid: "<%= params[:id] %>"});
+    return true; 
+} 
+
+// post-submit callback 
+function showResponse(xhr, statusText)  {
+    data = $.httpData(xhr, "json");
+    if (data.location) { // # TODO check http status!
+        location.href = data.location;
+    } else {
+        $('#uploading').hide();
+        if (data.error == "NotValid") {
+            $('#error').html("This video upload was not valid. Please try beginning the upload process again.");
+        } else if (data.error == "FormatNotRecognised") {
+            $('#uploader').show();
+            $('#error').html('The video format was not recognised. Please ensure that your video follows the <a href="http://pandastream.com/docs/upload_format_guidelines" target="_blank">upload format guidelines</a>.');
+        } else {
+            $('#uploader').show();
+            $('#error').html('Unfortunately there was an error uploading your video. We have been notified of this issue. Please try uploading your video again shortly.');
+        }
+    }
+}
