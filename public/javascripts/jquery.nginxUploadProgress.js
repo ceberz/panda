@@ -63,6 +63,13 @@ jQuery.nginxUploadProgressFetch = function(e, nginx_progress_url, progress_bar_i
 				}
 				
 				$("#eta").html(eta_str);
+			} else if (upload.state == 'error') {	
+	      $('#uploading').hide();
+				if (upload.status == 413) {
+					$('#error').html("Sorry, that video file is too large. Could you resave it as a smaller one (under 60MB) please?");
+				} else {
+					$('#error').html('Unfortunately there was an error uploading your video. We have been notified of this issue. Please try uploading your video again shortly.');
+				}
 			}
 			/* we are done, stop the interval */
 			// if (upload.state == 'done') {
