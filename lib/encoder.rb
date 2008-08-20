@@ -18,7 +18,7 @@ loop do
 
 PARENT ATTRS
 
-#{"="*60}\n#{video.parent.attributes.to_h.to_yaml}\n#{"="*60}
+#{"="*60}\n#{video.parent_video.attributes.to_h.to_yaml}\n#{"="*60}
 
 ENCODING ATTRS
 
