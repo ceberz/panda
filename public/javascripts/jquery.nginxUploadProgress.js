@@ -31,7 +31,7 @@ jQuery.nginxUploadProgress = function(settings) {
 			},
       dataType: 'json'        // 'xml', 'script', or 'json' (expected server response type) 
   }; 
-
+	
   // bind form using 'ajaxForm' 
   $('#upload').ajaxForm(options);
 };
@@ -55,8 +55,6 @@ jQuery.nginxUploadProgressFetch = function(e, nginx_progress_url, progress_bar_i
 		},
 		success: function(upload) {
 			/* change the width if the inner progress-bar */
-			// window.console.log("got ajax response")
-			// window.console.log(objToString(upload));
 			if (upload.state == 'uploading') {
 				bar = $('#'+progress_bar_id);
 				w = Math.floor((upload.received / upload.size)*100);
@@ -99,10 +97,6 @@ jQuery.nginxUploadProgressFetch = function(e, nginx_progress_url, progress_bar_i
 					$('#error').html('Unfortunately there was an error uploading your video. We have been notified of this issue. Please try uploading your video again shortly.');
 				}
 			}
-			/* we are done, stop the interval */
-			// if (upload.state == 'done') {
-			// 	window.clearTimeout(e.timer);
-			// }
 		}
 	});
 };
