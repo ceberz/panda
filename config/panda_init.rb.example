@@ -6,18 +6,19 @@ Panda::Config.use do |p|
   p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
   p[:state_update_url]       = "http://localhost:4000/videos/$id/status"
   p[:videos_domain]          = "s3.amazonaws.com/myvideosbucket"
-  p[:storage]                = :filesystem # or :s3 # TODO: implement
   p[:tmp_video_dir]          = Merb.root / "videos"
   
   p[:access_key_id]          = ""
   p[:secret_access_key]      = ""
   p[:s3_videos_bucket]       = "myvideosbucket"
-  p[:sqs_encoding_queue]     = "panda_encoding"
   p[:sdb_videos_domain]      = "panda_videos"
   p[:sdb_users_domain]       = "panda_users"
   p[:sdb_profiles_domain]    = "panda_profiles"
+  
   p[:thumbnail_height_constrain] = 125
+  
+  p[:notification_retries] = 6 # How many times should a failed notification be retried?
+  p[:notification_frequency] = 2 # How many
   p[:notification_email]     = "me@mydomain.com" # Where notifications get sent to
   p[:noreply_from]     = "no-reply@pandastream.com" # Where notifications come from
-  p[:notification_frequency] = 2
 end

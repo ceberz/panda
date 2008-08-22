@@ -148,7 +148,7 @@ class Video < SimpleDB::Base
       flashvars.image = "#{self.screenshot_url}";
       flashvars.width = "#{self.width}";
       flashvars.height = "#{self.height}";
-      flashvars.usefullscreen = "true";
+      flashvars.fullscreen = "true";
       flashvars.skin = "http://#{Panda::Config[:videos_domain]}/kleur.swf";
       flashvars.controlbar = "over";
       var params = {wmode:"transparent"};
