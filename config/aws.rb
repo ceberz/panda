@@ -5,8 +5,7 @@ SimpleDB::Base.establish_connection!(
 
 AWS::S3::Base.establish_connection!(
   :access_key_id     => Panda::Config[:access_key_id],
-  :secret_access_key => Panda::Config[:secret_access_key],
-  :server            => Panda::Config[:videos_domain],
+  :secret_access_key => Panda::Config[:secret_access_key]
   :persistent => false
 )
 
