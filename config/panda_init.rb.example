@@ -4,7 +4,7 @@ Panda::Config.use do |p|
   p[:account_name]           = "New Bamboo"
   p[:api_key]                = "f9e3425-16fd-012b-731d-001ec2b5c0e1"
   p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
-  p[:state_update_url]       = "http://localhost:4000/videos/$id/status"
+  p[:state_update_url]       = "http://localhost:4000/videos/$id/status_update"
   p[:videos_domain]          = "s3.amazonaws.com/myvideosbucket"
   p[:tmp_video_dir]          = Merb.root / "videos"
   
