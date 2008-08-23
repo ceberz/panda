@@ -1,6 +1,6 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
-  before :require_login, :only => [:index, :show, :destroy, :new, :add_to_queue]
+  before :require_login, :only => [:index, :show, :destroy, :new, :create, :add_to_queue]
   before :set_video, :only => [:show, :destroy, :add_to_queue]
   before :set_video_with_nice_errors, :only => [:form, :done, :state]
 
