@@ -149,9 +149,8 @@ class Video < SimpleDB::Base
       flashvars.width = "#{self.width}";
       flashvars.height = "#{self.height}";
       flashvars.fullscreen = "true";
-      flashvars.skin = "http://#{Panda::Config[:videos_domain]}/kleur.swf";
       flashvars.controlbar = "over";
-      var params = {wmode:"transparent"};
+      var params = {wmode:"transparent",fullscreen="true"};
       var attributes = {};
       attributes.align = "top";
       swfobject.embedSWF("http://#{Panda::Config[:videos_domain]}/player.swf", "flash_container_#{self.key[0..4]}", "#{self.width}", "#{self.height}", "9.0.115", "http://#{Panda::Config[:videos_domain]}/expressInstall.swf", flashvars, params, attributes);
