@@ -24,6 +24,7 @@ dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xm
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
+require 'right_aws'
 require 'inline'
 
 Merb::BootLoader.after_app_loads do
@@ -37,3 +38,5 @@ Merb::BootLoader.after_app_loads do
 end
 
 EMAIL_SENDER = "Panda <info@pandastream.com>"
+AWS_ID = ENV["AWS_ACCESS_KEY_ID"]
+AWS_KEY = ENV["AWS_SECRET_ACCESS_KEY"]

@@ -39,7 +39,16 @@ class Video < SimpleDB::Base
   
   def self.next_job
     # TODO: change to outstanding_jobs and remove .first
-    self.query("['status' = 'queued']").first
+    # self.query("['status' = 'queued']").first
+    # original panda stuff above
+    
+    job_queue = JobQueue.new
+    job_queue.dequeue
+  end
+  
+  def self.delete_job(receipt)
+    job_queue = JobQueue.new
+    job_queue.delete(receipt)
   end
   
   def self.outstanding_notifications
@@ -303,9 +312,11 @@ class Video < SimpleDB::Base
     
     # TODO: Allow manual selection of encoding profiles used in both form and api
     # For now we will just encode to all available profiles
+    job_queue = JobQueue.new
     Profile.query.each do |p|
       if self.find_encoding_for_profile(p).empty?
-        self.create_encoding_for_profile(p)
+        encoding = self.create_encoding_for_profile(p)
+        job_queue.enqueue(encoding)
       end
     end
     return true

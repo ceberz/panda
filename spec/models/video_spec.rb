@@ -1,4 +1,5 @@
 require File.join( File.dirname(__FILE__), "..", "spec_helper" )
+require 'job_queue.rb'
 
 describe Video do
   before :each do
@@ -51,8 +52,17 @@ describe Video do
   end
   
   it "self.next_job" do
-    Video.should_receive(:query).with("['status' = 'queued']").and_return([])
+    mocked_sqs_queue = mock("mocked sqs queue")
+    mocked_sqs_queue.should_receive(:dequeue).once
+    JobQueue.should_receive(:new).and_return(mocked_sqs_queue)
     Video.next_job
+  end
+  
+  it "self.delete_job" do
+    mocked_sqs_queue = mock("mocked sqs queue")
+    mocked_sqs_queue.should_receive(:delete).once.with("receipt")
+    JobQueue.should_receive(:new).and_return(mocked_sqs_queue)
+    Video.delete_job("receipt")
   end
   
   it "parent_video" do
@@ -234,6 +244,44 @@ describe Video do
   
   # def read_metadata
   
+  it "should enqueue each profile job, marked as queued, in the SQS queue" do
+    profile = mock_profile
+    Profile.should_receive(:query).twice.and_return([mock_profile])
+    Video.should_receive(:query).with("['parent' = 'abc'] intersection ['profile' = 'profile1']").and_return([])
+    # We didn't find a video, so the method will create one now
+    
+    encoding = Video.new('xyz')
+    encoding.should_receive(:status=).with("queued")
+    encoding.should_receive(:filename=).with("xyz.flv")
+    
+    # Attrs from the parent video
+    encoding.should_receive(:parent=).with("abc")
+    encoding.should_receive(:original_filename=).with("original_filename.mov")
+    encoding.should_receive(:duration=).with(100)
+    
+    # Attrs from the profile
+    encoding.should_receive(:profile=).with("profile1")
+    encoding.should_receive(:profile_title=).with("Flash video HI")
+    
+    encoding.should_receive(:container=).with("flv")
+    encoding.should_receive(:width=).with(480)
+    encoding.should_receive(:height=).with(360)
+    encoding.should_receive(:video_bitrate=).with(400)
+    encoding.should_receive(:fps=).with(24)
+    encoding.should_receive(:audio_bitrate=).with(48)
+    encoding.should_receive(:player=).with("flash")
+    
+    encoding.should_receive(:save)
+    
+    Video.should_receive(:new).and_return(encoding)
+    
+    mocked_sqs_queue = mock("mocked sqs queue")
+    mocked_sqs_queue.should_receive(:enqueue).once.with(encoding)
+    JobQueue.should_receive(:new).once.and_return(mocked_sqs_queue)
+    
+    @video.add_to_queue
+  end
+  
   # Also test create_encoding_for_profile(p) and find_encoding_for_profile(p)
   it "should create profiles when add_to_queue is called" do
     profile = mock_profile
@@ -265,6 +313,10 @@ describe Video do
     encoding.should_receive(:save)
     
     Video.should_receive(:new).and_return(encoding)
+
+    mocked_sqs_queue = stub_everything("mocked sqs queue")
+    JobQueue.should_receive(:new).once.and_return(mocked_sqs_queue)
+    
     
     @video.add_to_queue
   end
