@@ -116,29 +116,62 @@ describe JobQueue, "dequeueing" do
     @queue = JobQueue.new
   end
   
-  it "should return nil when the queue is empty" do
+  it "should return [] when the queue is empty" do
     mocked_video = stub_everything("mocked video")
     @mocked_sqs.stub!(:receive_message).and_return([])
     
     Video.should_not_receive(:find)
     
-    @queue.dequeue.should == nil
+    @queue.dequeue.should == []
   end
   
-  it "should return an sqs receipt abd a video object based on the ID returned in the queue message" do
+  it "should return an sqs receipt and a video object based on the ID returned in the queue message" do
     mocked_video = stub_everything("mocked video")
     
     Video.should_receive(:find).once.with("42").and_return(mocked_video)
     
     result = @queue.dequeue
-    result.is_a?(Hash).should == true
-    result[:video].should == mocked_video
-    result[:receipt].should == "receipt"
+    result.is_a?(Array).should == true
+    message = result.first
+    message.is_a?(Hash).should == true
+    message[:video].should == mocked_video
+    message[:receipt].should == "receipt"
+  end
+  
+  it "should return an array with multiple video/receipt hash pairs" do
+    first_mocked_video = stub_everything("mocked video")
+    second_mocked_video = stub_everything("mocked video")
+    
+    @mocked_sqs.stub!(:receive_message).and_return([
+      { "ReceiptHandle" => "receipt",
+        "MD5OfBody" => "hash",
+        "Body" => "42", 
+        "MessageId" => "id" },
+      { "ReceiptHandle" => "receipt",
+        "MD5OfBody" => "hash",
+        "Body" => "3.14", 
+        "MessageId" => "id" }])
+    
+    Video.should_receive(:find).once.with("42").and_return(first_mocked_video)
+    Video.should_receive(:find).once.with("3.14").and_return(second_mocked_video)
+    
+    result = @queue.dequeue
+    result.is_a?(Array).should == true
+    result.size.should == 2
+    
+    message = result[0]
+    message.is_a?(Hash).should == true
+    message[:video].should == first_mocked_video
+    message[:receipt].should == "receipt"
+    
+    message = result[1]
+    message.is_a?(Hash).should == true
+    message[:video].should == second_mocked_video
+    message[:receipt].should == "receipt"
   end
   
   it "should try to pop the number of messages specified in the settings" do
-    mocked_message = stub_everything("message")
-    @mocked_sqs.should_receive(:receive_message).once.with(anything, Panda::Config[:max_pull_down]).and_return(mocked_message)
+    @mocked_sqs.should_receive(:receive_message).once.with(anything, Panda::Config[:max_pull_down]).and_return([])
     
     @queue.dequeue()
   end
@@ -149,16 +182,14 @@ describe JobQueue, "dequeueing" do
     alt_mocked_sqs.stub!(:create_queue).and_return("queue URI")
     RightAws::SqsGen2Interface.stub!(:new).and_return(alt_mocked_sqs)
     
-    mocked_message = stub_everything("message")
-    alt_mocked_sqs.should_receive(:receive_message).once.with("queue URI", anything).and_return(mocked_message)
+    alt_mocked_sqs.should_receive(:receive_message).once.with("queue URI", anything).and_return([])
     
     new_queue = JobQueue.new
     new_queue.dequeue()
   end
 
   it "should use the URI returned from discovering an already existing queue" do
-    mocked_message = stub_everything("message")
-    @mocked_sqs.should_receive(:receive_message).once.with("queue URI", anything).and_return(mocked_message)
+    @mocked_sqs.should_receive(:receive_message).once.with("queue URI", anything).and_return([])
     
     @queue.dequeue()
   end

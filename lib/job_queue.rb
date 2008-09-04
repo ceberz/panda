@@ -16,10 +16,14 @@ class JobQueue
   def dequeue
     response = @sqs.receive_message(@url, Panda::Config[:max_pull_down])
     if response.empty?
-      return nil
+      return []
     else
-      video = Video.find(response.first["Body"])
-      return {:video => video, :receipt => response.first["ReceiptHandle"]}
+      videos = []
+      response.each do |message|
+        video = Video.find(message["Body"])
+        videos << {:video => video, :receipt => message["ReceiptHandle"]}
+      end
+      return videos
     end
   end
   
