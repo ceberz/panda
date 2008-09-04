@@ -6,34 +6,42 @@ loop do
   sleep 3
   Merb.logger.debug "Checking for messages... #{Time.now}"
   
-  jobs = Video.next_job
-  
-  jobs.each do |job|
-    begin
-      sleep 10
-      video = job[:video]
-      video.encode
-      # will not send delete receipt back to sqs if encoding process errors
-      video.delete_job(job[:receipt])
-    rescue
-      begin
-        ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
-
-#{$!}
-
-PARENT ATTRS
-
-#{"="*60}\n#{video.parent_video.attributes.to_h.to_yaml}\n#{"="*60}
-
-ENCODING ATTRS
-
-#{"="*60}\n#{video.attributes.to_h.to_yaml}\n#{"="*60}")
-      rescue
-        Merb.logger.error "Error sending error using ErrorSender.log_and_email - very erroneous! (#{$!})"
-      end
-    end
-  end
+  # work moved in to singleton class, really, just so that I could spec it
+  EncoderSingleton.process_jobs
 end
+
+# loop do
+#   sleep 3
+#   Merb.logger.debug "Checking for messages... #{Time.now}"
+#   
+#   jobs = Video.next_job
+#   
+#   jobs.each do |job|
+#     begin
+#       sleep 10
+#       video = job[:video]
+#       video.encode
+#       # will not send delete receipt back to sqs if encoding process errors
+#       video.delete_job(job[:receipt])
+#     rescue
+#       begin
+#         ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
+# 
+# #{$!}
+# 
+# PARENT ATTRS
+# 
+# #{"="*60}\n#{video.parent_video.attributes.to_h.to_yaml}\n#{"="*60}
+# 
+# ENCODING ATTRS
+# 
+# #{"="*60}\n#{video.attributes.to_h.to_yaml}\n#{"="*60}")
+#       rescue
+#         Merb.logger.error "Error sending error using ErrorSender.log_and_email - very erroneous! (#{$!})"
+#       end
+#     end
+#   end
+# end
 
 # loop do
 #   sleep 3
