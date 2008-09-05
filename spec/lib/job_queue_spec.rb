@@ -65,7 +65,7 @@ describe JobQueue, "enqueueing" do
     @queue = JobQueue.new
   end
   
-  it "should enqueue serialized data from a video object" do
+  it "should enqueue serialized data (the SimpleDB id) from a video object" do
     # in this case all we really need is the SimpleDB key
     mocked_video = mock("mocked video")
     mocked_video.stub!(:id).and_return(42)
@@ -122,7 +122,7 @@ describe JobQueue, "dequeueing" do
     
     Video.should_not_receive(:find)
     
-    @queue.dequeue.should == []
+    @queue.dequeue(1).should == []
   end
   
   it "should return an sqs receipt and a video object based on the ID returned in the queue message" do
@@ -130,7 +130,7 @@ describe JobQueue, "dequeueing" do
     
     Video.should_receive(:find).once.with("42").and_return(mocked_video)
     
-    result = @queue.dequeue
+    result = @queue.dequeue(1)
     result.is_a?(Array).should == true
     message = result.first
     message.is_a?(Hash).should == true
@@ -155,7 +155,7 @@ describe JobQueue, "dequeueing" do
     Video.should_receive(:find).once.with("42").and_return(first_mocked_video)
     Video.should_receive(:find).once.with("3.14").and_return(second_mocked_video)
     
-    result = @queue.dequeue
+    result = @queue.dequeue(2)
     result.is_a?(Array).should == true
     result.size.should == 2
     
@@ -170,10 +170,11 @@ describe JobQueue, "dequeueing" do
     message[:receipt].should == "receipt"
   end
   
-  it "should try to pop the number of messages specified in the settings" do
-    @mocked_sqs.should_receive(:receive_message).once.with(anything, Panda::Config[:max_pull_down]).and_return([])
+  it "should try to pop the number of messages passed in as a parameter" do
+    mocked_param = mock("param")
+    @mocked_sqs.should_receive(:receive_message).once.with(anything, mocked_param).and_return([])
     
-    @queue.dequeue()
+    @queue.dequeue(mocked_param)
   end
   
   it "should use the URI returned from creating a new queue" do
@@ -185,17 +186,16 @@ describe JobQueue, "dequeueing" do
     alt_mocked_sqs.should_receive(:receive_message).once.with("queue URI", anything).and_return([])
     
     new_queue = JobQueue.new
-    new_queue.dequeue()
+    new_queue.dequeue(1)
   end
 
   it "should use the URI returned from discovering an already existing queue" do
     @mocked_sqs.should_receive(:receive_message).once.with("queue URI", anything).and_return([])
     
-    @queue.dequeue()
+    @queue.dequeue(1)
   end
   
 end
-
 
 describe JobQueue, "deleteing" do
   before(:each) do
@@ -232,5 +232,26 @@ describe JobQueue, "deleteing" do
     @mocked_sqs.should_receive(:delete_message).once.with("queue URI", anything)
     
     @queue.delete("receipt")
+  end
+end
+
+describe JobQueue, "status" do
+  before(:each) do
+    Panda::Config[:account_name] = "Humanized Phrase"
+    Panda::Config[:default_timeout] = 42
+    
+    @mocked_sqs = stub_everything("mocked sqs")
+    @mocked_sqs.stub!(:list_queues).and_return(['humanized_phrase_job_queue'])
+    @mocked_sqs.stub!(:queue_url_by_name).and_return("queue URI")
+    RightAws::SqsGen2Interface.stub!(:new).and_return(@mocked_sqs)
+    
+    @queue = JobQueue.new
+  end
+  
+  it "should provide the number of messages in the queue" do
+    mocked_value = mock("mocked_value")
+    @mocked_sqs.should_receive(:get_queue_length).once.with("queue URI").and_return(mocked_value)
+    
+    @queue.num_jobs.should == mocked_value
   end
 end

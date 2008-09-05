@@ -17,6 +17,10 @@ class Video < SimpleDB::Base
     ['queued', 'processing', 'success', 'error'].include?(self.status)
   end
   
+  def queued?
+    self.status == "queued"
+  end
+  
   # Finders
   # =======
   
@@ -37,13 +41,13 @@ class Video < SimpleDB::Base
     self.query("['status' = 'processing' or 'status' = 'queued']", :load_attrs => true)
   end
   
-  def self.next_job
+  def self.next_job(max)
     # TODO: change to outstanding_jobs and remove .first
     # self.query("['status' = 'queued']").first
     # original panda stuff above
     
     job_queue = JobQueue.new
-    job_queue.dequeue
+    job_queue.dequeue(max)
   end
   
   def self.delete_job(receipt)

@@ -24,6 +24,14 @@ describe Video do
     @video.encoding?.should be_false
   end
   
+  it "queued? returns true iff video is in a queued state" do
+    @video.status = "queued"
+    @video.queued?.should be_true
+    
+    @video.status = "original"
+    @video.queued?.should be_false
+  end
+  
   # Finders
   # =======
   
@@ -52,10 +60,12 @@ describe Video do
   end
   
   it "self.next_job" do
+    mocked_jobs = mock("jobs")
+    mocked_param = mock("mocked_param")
     mocked_sqs_queue = mock("mocked sqs queue")
-    mocked_sqs_queue.should_receive(:dequeue).once
+    mocked_sqs_queue.should_receive(:dequeue).once.with(mocked_param).and_return(mocked_jobs)
     JobQueue.should_receive(:new).and_return(mocked_sqs_queue)
-    Video.next_job
+    Video.next_job(mocked_param).should == mocked_jobs
   end
   
   it "self.delete_job" do

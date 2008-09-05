@@ -13,8 +13,8 @@ class JobQueue
     @sqs.send_message(@url, video_object.id.to_s)
   end
   
-  def dequeue
-    response = @sqs.receive_message(@url, Panda::Config[:max_pull_down])
+  def dequeue(max)
+    response = @sqs.receive_message(@url, max)
     if response.empty?
       return []
     else
@@ -29,5 +29,13 @@ class JobQueue
   
   def delete(receipt)
     @sqs.delete_message(@url, receipt)
+  end
+  
+  def num_jobs()
+    @sqs.get_queue_length(@url)
+  end
+  
+  def get_settings()
+    @sqs.get_queue_attributes(@url)
   end
 end

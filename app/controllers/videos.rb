@@ -1,6 +1,6 @@
 class Videos < Application
   provides :html, :xml, :yaml # Allow before filters to accept all formats, which are then futher refined in each action
-  before :require_login, :only => [:index, :show, :destroy, :new, :create, :add_to_queue]
+  before :require_login, :only => [:index, :show, :destroy, :new, :create, :add_to_queue, :jobs]
   before :set_video, :only => [:show, :destroy, :add_to_queue]
   before :set_video_with_nice_errors, :only => [:form, :done, :state]
 
@@ -143,6 +143,13 @@ class Videos < Application
   def add_to_queue
     @video.add_to_queue
     redirect "/videos/#{@video.key}"
+  end
+  
+  def jobs
+    job_queue = JobQueue.new
+    @num_jobs_in_queue = job_queue.num_jobs
+    @queued_in_qb = Video.query("['status' = 'queued']")
+    @num_running_threads = EncoderSingleton.job_count
   end
   
 private
