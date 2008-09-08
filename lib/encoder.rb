@@ -7,7 +7,7 @@ loop do
   Merb.logger.debug "Checking for messages... #{Time.now}"
   
   # work moved in to singleton class, really, just so that I could spec it
-  EncoderSingleton.process_jobs
+  EncoderSingleton.schedule_jobs
 end
 
 # loop do
