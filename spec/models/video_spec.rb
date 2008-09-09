@@ -14,6 +14,10 @@ describe Video do
     end
     
     class S3VideoObject; end
+    
+    dummy_stub = stub_everything()
+    NotifyQueue.stub!(:new).and_return(dummy_stub)
+    EncodeQueue.stub!(:new).and_return(dummy_stub)
   end
   
   # Classification
@@ -64,15 +68,22 @@ describe Video do
     mocked_param = mock("mocked_param")
     mocked_sqs_queue = mock("mocked sqs queue")
     mocked_sqs_queue.should_receive(:dequeue).once.with(mocked_param).and_return(mocked_jobs)
-    JobQueue.should_receive(:new).and_return(mocked_sqs_queue)
+    EncodeQueue.should_receive(:new).and_return(mocked_sqs_queue)
     Video.next_job(mocked_param).should == mocked_jobs
   end
   
-  it "self.delete_job" do
+  it "self.delete_encoding_job" do
     mocked_sqs_queue = mock("mocked sqs queue")
     mocked_sqs_queue.should_receive(:delete).once.with("receipt")
-    JobQueue.should_receive(:new).and_return(mocked_sqs_queue)
-    Video.delete_job("receipt")
+    EncodeQueue.should_receive(:new).and_return(mocked_sqs_queue)
+    Video.delete_encoding_job("receipt")
+  end
+  
+  it "self.delete_notification_job" do
+    mocked_sqs_queue = mock("mocked sqs queue")
+    mocked_sqs_queue.should_receive(:delete).once.with("receipt")
+    NotifyQueue.should_receive(:new).and_return(mocked_sqs_queue)
+    Video.delete_notification_job("receipt")
   end
   
   it "parent_video" do
@@ -85,6 +96,14 @@ describe Video do
   it "encodings" do 
     Video.should_receive(:query).with("['parent' = 'abc']")
     @video.encodings
+  end
+  
+  it "queue_notification" do
+    mocked_queue = mock("mocked_queue")
+    NotifyQueue.should_receive(:new).and_return(mocked_queue)
+    mocked_queue.should_receive(:enqueue).once.with(@video)
+    
+    @video.queue_notification
   end
   
   # Attr helpers
@@ -287,7 +306,7 @@ describe Video do
     
     mocked_sqs_queue = mock("mocked sqs queue")
     mocked_sqs_queue.should_receive(:enqueue).once.with(encoding)
-    JobQueue.should_receive(:new).once.and_return(mocked_sqs_queue)
+    EncodeQueue.should_receive(:new).once.and_return(mocked_sqs_queue)
     
     @video.add_to_queue
   end
@@ -325,7 +344,7 @@ describe Video do
     Video.should_receive(:new).and_return(encoding)
 
     mocked_sqs_queue = stub_everything("mocked sqs queue")
-    JobQueue.should_receive(:new).once.and_return(mocked_sqs_queue)
+    EncodeQueue.should_receive(:new).once.and_return(mocked_sqs_queue)
     
     
     @video.add_to_queue
@@ -522,6 +541,32 @@ describe Video do
     encoding.should_receive(:recipe_options).with('/tmp/abc.mov', '/tmp/xyz.flv')
     
     encoding.encode_unknown_format
+  end
+  
+  it "should queue the notification request in the notifier queue" do
+    encoding = mock_encoding_flv_flash
+    encoding.stub!(:parent_video).and_return(@video)
+    @video.should_receive(:fetch_from_s3)
+  
+    encoding.should_receive(:status=).with("processing")
+    encoding.should_receive(:save).twice
+    encoding.should_receive(:encode_flv_flash)
+  
+    encoding.should_receive(:upload_to_s3)
+    encoding.should_receive(:capture_thumbnail_and_upload_to_s3)
+    
+    encoding.should_receive(:notification=).with(0)
+    encoding.should_receive(:status=).with("success")
+    encoding.should_receive(:encoded_at=).with(an_instance_of(Time))
+    encoding.should_receive(:encoding_time=).with(an_instance_of(Integer))
+    # encoding.should_receive(:save) expected twice above
+    
+    encoding.should_receive(:queue_notification)
+    
+    FileUtils.should_receive(:rm).with('/tmp/xyz.flv')
+    FileUtils.should_receive(:rm).with('/tmp/abc.mov')
+  
+    encoding.encode
   end
   
   private

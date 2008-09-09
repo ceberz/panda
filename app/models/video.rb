@@ -46,13 +46,23 @@ class Video < SimpleDB::Base
     # self.query("['status' = 'queued']").first
     # original panda stuff above
     
-    job_queue = JobQueue.new
+    job_queue = EncodeQueue.new
     job_queue.dequeue(max)
   end
   
-  def self.delete_job(receipt)
-    job_queue = JobQueue.new
+  def self.delete_encoding_job(receipt)
+    job_queue = EncodeQueue.new
     job_queue.delete(receipt)
+  end
+  
+  def self.delete_notification_job(receipt)
+    job_queue = NotifyQueue.new
+    job_queue.delete(receipt)
+  end
+  
+  def queue_notification
+    notify_queue = NotifyQueue.new
+    notify_queue.enqueue(self)
   end
   
   def self.outstanding_notifications
@@ -316,11 +326,11 @@ class Video < SimpleDB::Base
     
     # TODO: Allow manual selection of encoding profiles used in both form and api
     # For now we will just encode to all available profiles
-    job_queue = JobQueue.new
+    encode_queue = EncodeQueue.new
     Profile.query.each do |p|
       if self.find_encoding_for_profile(p).empty?
         encoding = self.create_encoding_for_profile(p)
-        job_queue.enqueue(encoding)
+        encode_queue.enqueue(encoding)
       end
     end
     return true
@@ -608,6 +618,7 @@ RESPONSE
       self.encoded_at = Time.now
       self.encoding_time = (Time.now - begun_encoding).to_i
       self.save
+      self.queue_notification
 
       Merb.logger.info "Removing tmp video files"
       FileUtils.rm self.tmp_filepath

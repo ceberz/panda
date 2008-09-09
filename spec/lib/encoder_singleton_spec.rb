@@ -129,14 +129,14 @@ describe EncoderSingleton, "job processing" do
   
   it "should encode a video and then delete the job from the queue" do
     @mocked_video_1.should_receive(:encode).once.ordered
-    @mocked_video_1.should_receive(:delete_job).once.ordered
+    @mocked_video_1.should_receive(:delete_encoding_job).once.ordered
     
     EncoderSingleton.process_job(@job_hash_1)
   end
   
   it "should not delete the job from the queue on an encode error" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
-    @mocked_video_1.should_not_receive(:delete_job)
+    @mocked_video_1.should_not_receive(:delete_encoding_job)
     
     EncoderSingleton.process_job(@job_hash_1)
   end
@@ -162,7 +162,7 @@ describe EncoderSingleton, "job processing" do
   
   it "should safely decrement the active job count on finishing a job" do
     @mocked_video_1.should_receive(:encode).once.ordered
-    @mocked_video_1.should_receive(:delete_job).once.ordered
+    @mocked_video_1.should_receive(:delete_encoding_job).once.ordered
     
     EncoderSingleton.job_mutex.should_receive(:synchronize).and_yield
     EncoderSingleton.should_receive(:dec_job_count).once.ordered
@@ -200,10 +200,10 @@ describe EncoderSingleton, "concurrent job processing" do
     Video.should_receive(:next_job).once.ordered.with(Panda::Config[:max_pull_down]).and_return(@job_hashes)
     
     @mocked_video_1.should_receive(:encode).once.ordered
-    @mocked_video_1.should_receive(:delete_job).once.ordered.with("receipt 1")
+    @mocked_video_1.should_receive(:delete_encoding_job).once.ordered.with("receipt 1")
     
     @mocked_video_2.should_receive(:encode).once.ordered
-    @mocked_video_2.should_receive(:delete_job).once.ordered.with("receipt 2")
+    @mocked_video_2.should_receive(:delete_encoding_job).once.ordered.with("receipt 2")
     
     EncoderSingleton.process_jobs
   end
@@ -212,10 +212,10 @@ describe EncoderSingleton, "concurrent job processing" do
     Video.should_receive(:next_job).once.ordered.and_return([])
     
     @mocked_video_1.should_not_receive(:encode)
-    @mocked_video_1.should_not_receive(:delete_job)
+    @mocked_video_1.should_not_receive(:delete_encoding_job)
     
     @mocked_video_2.should_not_receive(:encode)
-    @mocked_video_2.should_not_receive(:delete_job)
+    @mocked_video_2.should_not_receive(:delete_encoding_job)
     
     EncoderSingleton.process_jobs
   end
@@ -225,7 +225,7 @@ describe EncoderSingleton, "concurrent job processing" do
     ErrorSender.stub!(:log_and_email)
     
     @mocked_video_1.should_receive(:encode).once.ordered.and_raise(Exception)
-    @mocked_video_1.should_not_receive(:delete_job)
+    @mocked_video_1.should_not_receive(:delete_encoding_job)
     
     EncoderSingleton.process_jobs
   end
@@ -237,7 +237,7 @@ describe EncoderSingleton, "concurrent job processing" do
     @mocked_video_1.should_receive(:encode).once.ordered.and_raise(Exception)
     
     @mocked_video_2.should_receive(:encode).once.ordered
-    @mocked_video_2.should_receive(:delete_job).once.ordered.with("receipt 2")
+    @mocked_video_2.should_receive(:delete_encoding_job).once.ordered.with("receipt 2")
     
     EncoderSingleton.process_jobs
   end

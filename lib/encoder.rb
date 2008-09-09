@@ -22,7 +22,7 @@ end
 #       video = job[:video]
 #       video.encode
 #       # will not send delete receipt back to sqs if encoding process errors
-#       video.delete_job(job[:receipt])
+#       video.delete_encoding_job(job[:receipt])
 #     rescue
 #       begin
 #         ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
