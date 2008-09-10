@@ -1,4 +1,5 @@
 # merb -r "panda/lib/encoder.rb"
+require 'encoder_singleton.rb'
 
 Merb.logger.info 'Encoder awake!'
 

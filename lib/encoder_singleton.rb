@@ -28,7 +28,7 @@ class EncoderSingleton
     jobs = []
     
     @@job_mutex.synchronize do
-      jobs = Video.next_job(Panda::Config[:max_pull_down] - @@job_count)
+      jobs = Video.next_job(Panda::Config[:max_pull_down].to_i - @@job_count)
       
       jobs.each { EncoderSingleton.inc_job_count }
     end
