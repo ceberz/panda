@@ -1,6 +1,6 @@
 God.watch do |w|
   w.name = "panda"
-  current_path  = "/usr/local/www/panda"
+  current_path  = "/usr/local/www/panda-alt/panda"
   port = 4001
   w.start = "/bin/bash -c 'cd #{current_path}; merb -d -p #{port} -e production'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
@@ -33,7 +33,7 @@ end
 
 God.watch do |w|
   w.name = "encoder"
-  current_path  = "/usr/local/www/panda"
+  current_path  = "/usr/local/www/panda-alt/panda"
   port = 4091
   w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/encoder.rb -d -p #{port} -e encoder'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
@@ -48,6 +48,25 @@ God.watch do |w|
       c.running = false
       c.notify = 'admin'
     end
+  end
+end
+
+God.watch do |w|
+  w.name = "notifier"
+  current_path  = "/usr/local/www/panda-alt/panda"
+  port = 5091
+  w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/notifier.rb -d -p #{port} -e notifier'"
+  w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
+  w.pid_file = File.join(current_path, "log/merb.#{port}.pid")
+  w.behavior(:clean_pid_file)
+  w.start_grace = 10.seconds
+  w.restart_grace = 10.seconds
+  
+  w.start_if do |start|
+    start.condition(:process_running) do |c|
+      c.interval = 10.seconds
+      c.running = false
+      c.notify = 'admin'
   end
 end
 
