@@ -67,7 +67,8 @@ God.watch do |w|
       c.interval = 10.seconds
       c.running = false
       c.notify = 'admin'
-  end
+  	end
+	end
 end
 
 God::Contacts::Email.message_settings = {
