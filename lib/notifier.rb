@@ -10,7 +10,12 @@ Merb.logger.info 'Notifier awake!'
 
 loop do
   sleep 3
-  Merb.logger.debug "Checking for messages... #{Time.now}"
+  
+  begin
+    Merb.logger.debug "Checking for messages... #{Time.now}"
+  rescue Exception => e
+    Merb.logger.error "ERROR (#{$!.to_s}) checking notifier jobs"
+  end
   
   NotifierSingleton.process_notifications
 end

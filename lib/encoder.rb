@@ -8,7 +8,11 @@ loop do
   Merb.logger.debug "Checking for messages... #{Time.now}"
   
   # work moved in to singleton class, really, just so that I could spec it
-  EncoderSingleton.schedule_jobs
+  begin
+    EncoderSingleton.schedule_jobs
+  rescue Exception => e
+    Merb.logger.error "ERROR (#{$!.to_s}) checking encoder jobs for scheduling"
+  end
 end
 
 # loop do
