@@ -41,6 +41,9 @@ describe EncoderSingleton, "job scheduling" do
     
     Panda::Config[:max_pull_down] = 5
     EncoderSingleton.job_count = 0
+    
+    @mocked_logger = stub_everything()
+    Merb.stub!(:logger).and_return(@mocked_logger)
   end
   
   it "should not request more jobs than the max setting" do
@@ -73,10 +76,19 @@ describe EncoderSingleton, "job scheduling" do
     Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
     
     Thread.should_receive(:new).once.ordered.with(@job_hashes[0]).and_yield(@job_hashes[0])
-      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[0])
+      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[0], anything())
       
     Thread.should_receive(:new).once.ordered.with(@job_hashes[1]).and_yield(@job_hashes[1])
-      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1])
+      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1], anything())
+    
+    EncoderSingleton.schedule_jobs
+  end
+  
+  it "should pass a thread id to each job processor" do
+    Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
+    
+    Thread.should_receive(:new).twice.with(anything()).and_yield(stub_everything("dummy"))
+    EncoderSingleton.should_receive(:process_job).twice.with(anything(), an_instance_of(Integer))
     
     EncoderSingleton.schedule_jobs
   end
@@ -87,10 +99,10 @@ describe EncoderSingleton, "job scheduling" do
     Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
 
     Thread.should_not_receive(:new).with(@job_hashes[0])
-      EncoderSingleton.should_not_receive(:process_job).with(@job_hashes[0])
+      EncoderSingleton.should_not_receive(:process_job).with(@job_hashes[0], anything())
       
     Thread.should_receive(:new).once.ordered.with(@job_hashes[1]).and_yield(@job_hashes[1])
-      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1])
+      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1], anything())
     
     EncoderSingleton.schedule_jobs
   end
@@ -125,20 +137,23 @@ describe EncoderSingleton, "job processing" do
     
     # stub out the mutex unless it needs to be mocked
     EncoderSingleton.job_mutex.stub!(:synchronize).and_yield
+    
+    @mocked_logger = stub_everything()
+    Merb.stub!(:logger).and_return(@mocked_logger)
   end
   
   it "should encode a video and then delete the job from the queue" do
     @mocked_video_1.should_receive(:encode).once.ordered
     @mocked_video_1.should_receive(:delete_encoding_job).once.ordered
     
-    EncoderSingleton.process_job(@job_hash_1)
+    EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should not delete the job from the queue on an encode error" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
     @mocked_video_1.should_not_receive(:delete_encoding_job)
     
-    EncoderSingleton.process_job(@job_hash_1)
+    EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should log an error on a failure" do
@@ -146,18 +161,16 @@ describe EncoderSingleton, "job processing" do
     
     ErrorSender.should_receive(:log_and_email).once
     
-    EncoderSingleton.process_job(@job_hash_1)
+    EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should log a meta-error if normal error logging fails" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
     ErrorSender.stub!(:log_and_email).and_raise(Exception)
     
-    mocked_logger = mock("mocked logger")
-    Merb.should_receive(:logger).once.ordered.and_return(mocked_logger)
-    mocked_logger.should_receive(:error).once.ordered
+    @mocked_logger.should_receive(:error).once
     
-    EncoderSingleton.process_job(@job_hash_1)
+    EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should safely decrement the active job count on finishing a job" do
@@ -167,7 +180,7 @@ describe EncoderSingleton, "job processing" do
     EncoderSingleton.job_mutex.should_receive(:synchronize).and_yield
     EncoderSingleton.should_receive(:dec_job_count).once.ordered
     
-    EncoderSingleton.process_job(@job_hash_1)
+    EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should safely decrement the active job count when a job errors" do
@@ -176,7 +189,7 @@ describe EncoderSingleton, "job processing" do
     EncoderSingleton.job_mutex.should_receive(:synchronize).and_yield
     EncoderSingleton.should_receive(:dec_job_count).once.ordered
     
-    EncoderSingleton.process_job(@job_hash_1)
+    EncoderSingleton.process_job(@job_hash_1, 1234)
   end
 end
 
@@ -194,6 +207,9 @@ describe EncoderSingleton, "concurrent job processing" do
                    
     # no reason to sit around waiting
     EncoderSingleton.stub!(:sleep)
+    
+    @mocked_logger = stub_everything()
+    Merb.stub!(:logger).and_return(@mocked_logger)
   end
   
   it "should fetch an array of jobs and then process each, encoding and then deleteing from the job queue" do
@@ -252,13 +268,11 @@ describe EncoderSingleton, "concurrent job processing" do
   end
   
   it "should log a meta-error if normal error logging fails" do
-    mocked_logger = mock("mocked logger")
     Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
     
     @mocked_video_1.should_receive(:encode).once.ordered.and_raise(Exception)
     ErrorSender.should_receive(:log_and_email).once.ordered.and_raise(Exception)
-    Merb.should_receive(:logger).once.ordered.and_return(mocked_logger)
-    mocked_logger.should_receive(:error).once.ordered
+    @mocked_logger.should_receive(:error).once.ordered
     
     EncoderSingleton.process_jobs
   end
