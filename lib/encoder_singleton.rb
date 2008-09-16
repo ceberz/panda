@@ -45,7 +45,11 @@ class EncoderSingleton
           EncoderSingleton.process_job(job, proc_id)
         end
       else
-        Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state."
+        @@job_mutex.synchronize do
+          EncoderSingleton.dec_job_count
+        end
+        job[:video].delete_encoding_job(job[:receipt])
+        Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state. Removing from queue and freeing thread resources.  job count decremented to #{@@job_count}"
       end
     end
   end

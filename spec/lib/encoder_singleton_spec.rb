@@ -73,7 +73,7 @@ describe EncoderSingleton, "job scheduling" do
   end
   
   it "should start a thread to deal with each new job" do
-    Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
+    Video.stub!(:next_job).and_return(@job_hashes)
     
     Thread.should_receive(:new).once.ordered.with(@job_hashes[0]).and_yield(@job_hashes[0])
       EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[0], anything())
@@ -85,7 +85,7 @@ describe EncoderSingleton, "job scheduling" do
   end
   
   it "should pass a thread id to each job processor" do
-    Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
+    Video.stub!(:next_job).and_return(@job_hashes)
     
     Thread.should_receive(:new).twice.with(anything()).and_yield(stub_everything("dummy"))
     EncoderSingleton.should_receive(:process_job).twice.with(anything(), an_instance_of(Integer))
@@ -96,13 +96,36 @@ describe EncoderSingleton, "job scheduling" do
   it "should only schedule jobs that have videos in the queued state" do
     @mocked_video_1.stub!(:queued?).and_return(false)
     
-    Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
+    Video.stub!(:next_job).and_return(@job_hashes)
 
     Thread.should_not_receive(:new).with(@job_hashes[0])
       EncoderSingleton.should_not_receive(:process_job).with(@job_hashes[0], anything())
       
     Thread.should_receive(:new).once.ordered.with(@job_hashes[1]).and_yield(@job_hashes[1])
       EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1], anything())
+    
+    EncoderSingleton.schedule_jobs
+  end
+  
+  it "should release resources and decrement the job count for each video pulled that isn't in the queued state" do
+    @mocked_video_1.stub!(:queued?).and_return(false)
+    
+    Video.stub!(:next_job).and_return(@job_hashes)
+    
+    Thread.stub!(:new)
+    EncoderSingleton.stub!(:process_job)
+
+    EncoderSingleton.should_receive(:dec_job_count).once.ordered
+    
+    EncoderSingleton.schedule_jobs
+  end
+  
+  it "should remove erroneus videos not in the queued state from the queue" do
+    @mocked_video_1.stub!(:queued?).and_return(false)
+    
+    Video.stub!(:next_job).and_return(@job_hashes)
+
+    @mocked_video_1.should_receive(:delete_encoding_job).once.with(@job_hashes[0][:receipt])
     
     EncoderSingleton.schedule_jobs
   end
