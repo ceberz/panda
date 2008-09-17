@@ -124,6 +124,7 @@ describe EncoderSingleton, "job scheduling" do
     @mocked_video_1.stub!(:queued?).and_return(false)
     
     Video.stub!(:next_job).and_return(@job_hashes)
+    Thread.stub!(:new)
 
     Video.should_receive(:delete_encoding_job).once.with(@job_hashes[0][:receipt])
     
@@ -167,20 +168,21 @@ describe EncoderSingleton, "job processing" do
   
   it "should encode a video and then delete the job from the queue" do
     @mocked_video_1.should_receive(:encode).once.ordered
-    Video.should_receive(:delete_encoding_job).once.ordered
+    Video.should_receive(:delete_encoding_job).once.ordered.with(@job_hash_1[:receipt])
     
     EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
-  it "should not delete the job from the queue on an encode error" do
+  it "should delete the job from the queue on an encode error" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
-    Video.should_not_receive(:delete_encoding_job)
+    Video.should_receive(:delete_encoding_job).once.ordered.with(@job_hash_1[:receipt])
     
     EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should log an error on a failure" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
+    Video.stub!(:delete_encoding_job)
     
     ErrorSender.should_receive(:log_and_email).once
     
@@ -190,6 +192,7 @@ describe EncoderSingleton, "job processing" do
   it "should log a meta-error if normal error logging fails" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
     ErrorSender.stub!(:log_and_email).and_raise(Exception)
+    Video.stub!(:delete_encoding_job)
     
     @mocked_logger.should_receive(:error).once
     
@@ -197,19 +200,20 @@ describe EncoderSingleton, "job processing" do
   end
   
   it "should safely decrement the active job count on finishing a job" do
-    @mocked_video_1.should_receive(:encode).once.ordered
-    Video.should_receive(:delete_encoding_job).once.ordered
+    @mocked_video_1.stub!(:encode)
+    Video.stub!(:delete_encoding_job)
     
-    EncoderSingleton.job_mutex.should_receive(:synchronize).and_yield
+    EncoderSingleton.job_mutex.should_receive(:synchronize).once.ordered.and_yield
     EncoderSingleton.should_receive(:dec_job_count).once.ordered
     
     EncoderSingleton.process_job(@job_hash_1, 1234)
   end
   
   it "should safely decrement the active job count when a job errors" do
-    @mocked_video_1.should_receive(:encode).once.ordered.and_raise(Exception)
+    @mocked_video_1.stub!(:encode).and_raise(Exception)
+    Video.stub!(:delete_encoding_job)
     
-    EncoderSingleton.job_mutex.should_receive(:synchronize).and_yield
+    EncoderSingleton.job_mutex.should_receive(:synchronize).once.ordered.and_yield
     EncoderSingleton.should_receive(:dec_job_count).once.ordered
     
     EncoderSingleton.process_job(@job_hash_1, 1234)

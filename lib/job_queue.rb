@@ -20,8 +20,12 @@ class JobQueue
     else
       videos = []
       response.each do |message|
-        video = Video.find(message["Body"])
-        videos << {:video => video, :receipt => message["ReceiptHandle"]}
+        begin
+          video = Video.find(message["Body"])
+          videos << {:video => video, :receipt => message["ReceiptHandle"]}
+        rescue Amazon::SDB::RecordNotFoundError
+          @sqs.delete_message(@url, message["ReceiptHandle"])
+        end
       end
       return videos
     end

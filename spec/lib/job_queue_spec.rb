@@ -170,6 +170,16 @@ describe JobQueue, "dequeueing" do
     message[:receipt].should == "receipt"
   end
   
+  it "should remove from queue any jobs with bogus simpledb keys" do
+    mocked_video = stub_everything("mocked video")
+    
+    Video.should_receive(:find).once.with("42").and_raise(Amazon::SDB::RecordNotFoundError)
+    
+    @mocked_sqs.should_receive(:delete_message).once.with(anything(), "receipt")
+    
+    result = @queue.dequeue(1).should == []
+  end
+  
   it "should try to pop the number of messages passed in as a parameter" do
     mocked_param = mock("param")
     @mocked_sqs.should_receive(:receive_message).once.with(anything, mocked_param).and_return([])

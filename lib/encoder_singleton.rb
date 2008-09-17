@@ -55,8 +55,6 @@ class EncoderSingleton
       video = job[:video]
       Merb.logger.info "Encoder Thread #{proc_id}: calling video.encode"
       video.encode
-      # will not send delete receipt back to sqs if encoding process errors
-      Video.delete_encoding_job(job[:receipt])
     rescue Exception => e
       Merb.logger.info "Encoder Thread #{proc_id}: ERROR during encoding"
       begin
@@ -75,6 +73,7 @@ ENCODING ATTRS
         Merb.logger.error "Error sending error using ErrorSender.log_and_email - very erroneous! (#{$!})"
       end
     ensure
+      Video.delete_encoding_job(job[:receipt])
       @@job_mutex.synchronize do
         EncoderSingleton.dec_job_count
         Merb.logger.info "Encoder Thread #{proc_id}: thread finishing; job count decremented to #{@@job_count}"
