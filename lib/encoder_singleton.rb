@@ -31,7 +31,7 @@ class EncoderSingleton
     Merb.logger.info "#{jobs.size} jobs taken from queue" unless jobs.empty?
     
     jobs.each do |job|
-      Merb.logger.info "Evaluating encoding job from queue with ID #{job[:video].id}"
+      Merb.logger.info "Evaluating encoding job from queue with ID #{job[:video].key}"
       if job[:video].queued?
         @@job_mutex.synchronize do
            EncoderSingleton.inc_job_count 
@@ -40,10 +40,10 @@ class EncoderSingleton
         Thread.new(job) do |job|
           EncoderSingleton.process_job(job, proc_id)
         end
-        Merb.logger.info "Video with ID #{job[:video].id} being encoded in separate thread with ID = #{proc_id}. job count incremented to #{@@job_count}"
+        Merb.logger.info "Video with ID #{job[:video].key} being encoded in separate thread with ID = #{proc_id}. job count incremented to #{@@job_count}"
       else
         Video.delete_encoding_job(job[:receipt])
-        Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state. Removing from queue."
+        Merb.logger.info "Video with ID #{job[:video].key} pulled, but is not in correct state. Removing from queue."
       end
     end
   end

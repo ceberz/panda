@@ -68,9 +68,9 @@ describe JobQueue, "enqueueing" do
   it "should enqueue serialized data (the SimpleDB id) from a video object" do
     # in this case all we really need is the SimpleDB key
     mocked_video = mock("mocked video")
-    mocked_video.stub!(:id).and_return(42)
+    mocked_video.stub!(:key).and_return(42)
     
-    @mocked_sqs.should_receive(:send_message).once.with(anything, mocked_video.id.to_s)
+    @mocked_sqs.should_receive(:send_message).once.with(anything, mocked_video.key.to_s)
     
     @queue.enqueue(mocked_video)
   end
@@ -82,14 +82,14 @@ describe JobQueue, "enqueueing" do
     RightAws::SqsGen2Interface.stub!(:new).and_return(alt_mocked_sqs)
     
     alt_mocked_sqs.should_receive(:send_message).once.with("queue URI", anything)
-    mocked_message = mock("message")
+    mocked_message = stub_everything("message")
     
     new_queue = JobQueue.new
     new_queue.enqueue(mocked_message)
   end
 
   it "should use the URI returned from discovering an already existing queue" do
-    mocked_message = mock("message")
+    mocked_message = stub_everything("message")
     @mocked_sqs.should_receive(:send_message).once.with("queue URI", anything)
     
     @queue.enqueue(mocked_message)

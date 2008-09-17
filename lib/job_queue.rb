@@ -10,7 +10,7 @@ class JobQueue
   end
   
   def enqueue(video_object)
-    @sqs.send_message(@url, video_object.id.to_s)
+    @sqs.send_message(@url, video_object.key.to_s)
   end
   
   def dequeue(max)
