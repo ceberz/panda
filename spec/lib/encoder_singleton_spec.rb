@@ -60,26 +60,24 @@ describe EncoderSingleton, "job scheduling" do
     EncoderSingleton.schedule_jobs
   end
   
-  it "should safely query for new jobs and increment the job count before spawning process threads" do
-    EncoderSingleton.job_mutex.should_receive(:synchronize).once.ordered.and_yield
-    Video.should_receive(:next_job).once.ordered.and_return(@job_hashes)
-    EncoderSingleton.should_receive(:inc_job_count).twice.ordered
+  it "should start a thread to deal with each new valid job" do
+    Video.stub!(:next_job).and_return(@job_hashes)
     
-    # expect the first Thread::new call after all of this
-    Thread.should_receive(:new).twice.ordered.and_yield(stub_everything("dummy job"))
-    EncoderSingleton.stub!(:process_job)
+    Thread.should_receive(:new).once.ordered.with(@job_hashes[0]).and_yield(@job_hashes[0])
+    EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[0], anything())
+      
+    Thread.should_receive(:new).once.ordered.with(@job_hashes[1]).and_yield(@job_hashes[1])
+    EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1], anything())
     
     EncoderSingleton.schedule_jobs
   end
   
-  it "should start a thread to deal with each new job" do
+  it "should safely increment the job count for each new valid job" do
     Video.stub!(:next_job).and_return(@job_hashes)
     
-    Thread.should_receive(:new).once.ordered.with(@job_hashes[0]).and_yield(@job_hashes[0])
-      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[0], anything())
-      
-    Thread.should_receive(:new).once.ordered.with(@job_hashes[1]).and_yield(@job_hashes[1])
-      EncoderSingleton.should_receive(:process_job).once.ordered.with(@job_hashes[1], anything())
+    EncoderSingleton.job_mutex.should_receive(:synchronize).twice.ordered.and_yield
+    EncoderSingleton.should_receive(:inc_job_count).twice.ordered
+    Thread.stub!(:new)
     
     EncoderSingleton.schedule_jobs
   end
@@ -107,15 +105,15 @@ describe EncoderSingleton, "job scheduling" do
     EncoderSingleton.schedule_jobs
   end
   
-  it "should release resources and decrement the job count for each video pulled that isn't in the queued state" do
+  it "should increment the job count for jobs that have videos in the queued state" do
     @mocked_video_1.stub!(:queued?).and_return(false)
+    @mocked_video_2.stub!(:queued?).and_return(false)
     
     Video.stub!(:next_job).and_return(@job_hashes)
-    
-    Thread.stub!(:new)
-    EncoderSingleton.stub!(:process_job)
 
-    EncoderSingleton.should_receive(:dec_job_count).once.ordered
+    EncoderSingleton.job_mutex.should_not_receive(:synchronize)
+    EncoderSingleton.should_not_receive(:inc_job_count)
+    Thread.stub!(:new)
     
     EncoderSingleton.schedule_jobs
   end

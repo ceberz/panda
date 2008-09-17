@@ -27,29 +27,23 @@ class EncoderSingleton
   def self.schedule_jobs
     jobs = []
     
-    @@job_mutex.synchronize do
-      jobs = Video.next_job(Panda::Config[:max_pull_down].to_i - @@job_count)
-      
-      jobs.each { 
-        EncoderSingleton.inc_job_count
-        Merb.logger.info "Job taken from queue; job count incremented to #{@@job_count}"
-      }
-    end
+    jobs = Video.next_job(Panda::Config[:max_pull_down].to_i - @@job_count)
+    # Merb.logger.info "#{jobs.size} jobs taken from queue" unless jobs.empty?
     
     jobs.each do |job|
-      Merb.logger.info "Pulled encoding job from queue with ID #{job[:video].id}"
+      # Merb.logger.info "Evaluating encoding job from queue with ID #{job[:video].id}"
       if job[:video].queued?
+        @@job_mutex.synchronize do
+           EncoderSingleton.inc_job_count 
+        end
         proc_id = (Kernel.rand * 100000).floor
-        Merb.logger.info "Video with ID #{job[:video].id} being encoded in separate thread with ID = #{proc_id}."
         Thread.new(job) do |job|
           EncoderSingleton.process_job(job, proc_id)
         end
+        # Merb.logger.info "Video with ID #{job[:video].id} being encoded in separate thread with ID = #{proc_id}. job count incremented to #{@@job_count}"
       else
-        @@job_mutex.synchronize do
-          EncoderSingleton.dec_job_count
-        end
         job[:video].delete_encoding_job(job[:receipt])
-        Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state. Removing from queue and freeing thread resources.  job count decremented to #{@@job_count}"
+        # Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state. Removing from queue."
       end
     end
   end
