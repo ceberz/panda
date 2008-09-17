@@ -11,10 +11,11 @@ class NotifierSingleton
       begin
         if encoding.time_to_send_notification?
           encoding.send_notification
-          encoding.delete_notification_job
         end
       rescue Exception => e
         Merb.logger.error "ERROR (#{$!.to_s}) sending notification for #{encoding.key}. Waiting #{encoding.notification_wait_period}s before trying again."
+      ensure
+        Video.delete_notification_job(job[:receipt])
       end
     end
   end

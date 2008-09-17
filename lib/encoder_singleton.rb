@@ -28,10 +28,10 @@ class EncoderSingleton
     jobs = []
     
     jobs = Video.next_job(Panda::Config[:max_pull_down].to_i - @@job_count)
-    # Merb.logger.info "#{jobs.size} jobs taken from queue" unless jobs.empty?
+    Merb.logger.info "#{jobs.size} jobs taken from queue" unless jobs.empty?
     
     jobs.each do |job|
-      # Merb.logger.info "Evaluating encoding job from queue with ID #{job[:video].id}"
+      Merb.logger.info "Evaluating encoding job from queue with ID #{job[:video].id}"
       if job[:video].queued?
         @@job_mutex.synchronize do
            EncoderSingleton.inc_job_count 
@@ -40,10 +40,10 @@ class EncoderSingleton
         Thread.new(job) do |job|
           EncoderSingleton.process_job(job, proc_id)
         end
-        # Merb.logger.info "Video with ID #{job[:video].id} being encoded in separate thread with ID = #{proc_id}. job count incremented to #{@@job_count}"
+        Merb.logger.info "Video with ID #{job[:video].id} being encoded in separate thread with ID = #{proc_id}. job count incremented to #{@@job_count}"
       else
-        job[:video].delete_encoding_job(job[:receipt])
-        # Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state. Removing from queue."
+        Video.delete_encoding_job(job[:receipt])
+        Merb.logger.info "Video with ID #{job[:video].id} pulled, but is not in correct state. Removing from queue."
       end
     end
   end
@@ -56,7 +56,7 @@ class EncoderSingleton
       Merb.logger.info "Encoder Thread #{proc_id}: calling video.encode"
       video.encode
       # will not send delete receipt back to sqs if encoding process errors
-      video.delete_encoding_job(job[:receipt])
+      Video.delete_encoding_job(job[:receipt])
     rescue Exception => e
       Merb.logger.info "Encoder Thread #{proc_id}: ERROR during encoding"
       begin
@@ -78,37 +78,6 @@ ENCODING ATTRS
       @@job_mutex.synchronize do
         EncoderSingleton.dec_job_count
         Merb.logger.info "Encoder Thread #{proc_id}: thread finishing; job count decremented to #{@@job_count}"
-      end
-    end
-  end
-  
-  # non-threaded
-  def self.process_jobs
-    jobs = Video.next_job(Panda::Config[:max_pull_down])
-    
-    jobs.each do |job|
-      begin
-        sleep 10
-        video = job[:video]
-        video.encode
-        # will not send delete receipt back to sqs if encoding process errors
-        video.delete_encoding_job(job[:receipt])
-      rescue Exception => e
-        begin
-          ErrorSender.log_and_email("encoding error", "Error encoding #{video.key}
-
-  #{$!}
-
-  PARENT ATTRS
-
-  #{"="*60}\n#{video.parent_video.attributes.to_h.to_yaml}\n#{"="*60}
-
-  ENCODING ATTRS
-
-  #{"="*60}\n#{video.attributes.to_h.to_yaml}\n#{"="*60}")
-        rescue Exception => meta_e
-          Merb.logger.error "Error sending error using ErrorSender.log_and_email - very erroneous! (#{$!})"
-        end
       end
     end
   end
