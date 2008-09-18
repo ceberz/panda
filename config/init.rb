@@ -34,6 +34,14 @@ Merb::BootLoader.after_app_loads do
     require "config" / "mailer" # If you want notification and encoding errors to be sent to you as well as logged
   end
 
+# Overwriding form, as SimpleDB does not provide errors on object.
+  module Merb::Helpers::Form
+    def _singleton_form_context
+      self._default_builder = Merb::Helpers::Form::Builder::ResourcefulForm
+      @_singleton_form_context ||=
+        self._default_builder.new(nil, nil, self)
+    end
+  end
 end
 
 EMAIL_SENDER = "Panda <info@pandastream.com>"
