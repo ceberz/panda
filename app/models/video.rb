@@ -101,8 +101,12 @@ class Video < SimpleDB::Base
   end
   
   # Location to store video file fetched from S3 for encoding
-  def tmp_filepath
-    Panda::Config[:tmp_video_dir] / self.filename
+  def tmp_filepath(thread_id = "")
+    unless thread_id == ""
+      Panda::Config[:tmp_video_dir] / "#{thread_id}.#{self.filename}"
+    else
+      Panda::Config[:tmp_video_dir] / self.filename
+    end
   end
   
   # Has the actual video file been uploaded for encoding?
@@ -191,7 +195,7 @@ class Video < SimpleDB::Base
     begin
       retryable(:tries => 5) do
         Merb.logger.info "Thread(#{thread_id}): Upload to S3"
-        S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
+        S3VideoObject.store(self.filename, File.open(self.tmp_filepath(thread_id)), :access => :public_read)
         sleep 3
       end
     rescue
@@ -205,7 +209,7 @@ class Video < SimpleDB::Base
   def fetch_from_s3(thread_id = "")
     begin
       retryable(:tries => 5) do
-        File.open(self.tmp_filepath, 'w') do |file|
+        File.open(self.tmp_filepath(thread_id), 'w') do |file|
           Merb.logger.info "Thread(#{thread_id}): Fetch from S3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
@@ -235,10 +239,10 @@ class Video < SimpleDB::Base
   end
   
   def capture_thumbnail_and_upload_to_s3(thread_id = "")
-    screenshot_tmp_filepath = self.tmp_filepath + ".jpg"
-    thumbnail_tmp_filepath = self.tmp_filepath + "_thumb.jpg"
+    screenshot_tmp_filepath = self.tmp_filepath(thread_id) + ".jpg"
+    thumbnail_tmp_filepath = self.tmp_filepath(thread_id) + "_thumb.jpg"
     
-    t = RVideo::Inspector.new(:file => self.tmp_filepath)
+    t = RVideo::Inspector.new(:file => self.tmp_filepath(thread_id))
     t.capture_frame('50%', screenshot_tmp_filepath)
     
     constrain_to_height = Panda::Config[:thumbnail_height_constrain].to_f
@@ -538,57 +542,57 @@ RESPONSE
     }
   end
   
-  def encode_flv_flash
-    Merb.logger.info "Encoding with encode_flv_flash"
+  def encode_flv_flash(thread_id = "")
+    Merb.logger.info "Thread(#{thread_id}): Encoding with encode_flv_flash"
     transcoder = RVideo::Transcoder.new
     recipe = "ffmpeg -i $input_file$ -ar 22050 -ab $audio_bitrate$k -f flv -b $video_bitrate_in_bits$ -r 24 $resolution_and_padding$ -y $output_file$"
     recipe += "\nflvtool2 -U $output_file$"
-    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath(thread_id), self.tmp_filepath(thread_id)))
   end
   
-  def encode_mp4_aac_flash
-    Merb.logger.info "Encoding with encode_mp4_aac_flash"
+  def encode_mp4_aac_flash(thread_id = "")
+    Merb.logger.info "Thread(#{thread_id}): Encoding with encode_mp4_aac_flash"
     transcoder = RVideo::Transcoder.new
     # Just the video without audio
-    temp_video_output_file = "#{self.tmp_filepath}.temp.video.mp4"
-    temp_audio_output_file = "#{self.tmp_filepath}.temp.audio.mp4"
-    temp_audio_output_wav_file = "#{self.tmp_filepath}.temp.audio.wav"
+    temp_video_output_file = "#{self.tmp_filepath(thread_id)}.temp.video.mp4"
+    temp_audio_output_file = "#{self.tmp_filepath(thread_id)}.temp.audio.mp4"
+    temp_audio_output_wav_file = "#{self.tmp_filepath(thread_id)}.temp.audio.wav"
 
     recipe = "ffmpeg -i $input_file$ -b $video_bitrate_in_bits$ -an -vcodec libx264 -rc_eq 'blurCplx^(1-qComp)' -qcomp 0.6 -qmin 10 -qmax 51 -qdiff 4 -coder 1 -flags +loop -cmp +chroma -partitions +parti4x4+partp8x8+partb8x8 -me hex -subq 5 -me_range 16 -g 250 -keyint_min 25 -sc_threshold 40 -i_qfactor 0.71 $resolution_and_padding$ -r 24 -threads 4 -y $output_file$"
     recipe_audio_extraction = "ffmpeg -i $input_file$ -ar 48000 -ac 2 -y $output_file$"
 
-    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath, temp_video_output_file))
+    transcoder.execute(recipe, self.recipe_options(self.parent_video.tmp_filepath(thread_id), temp_video_output_file))
     
-    Merb.logger.info "Video encoding done"
+    Merb.logger.info "Thread(#{thread_id}): Video encoding done"
     unless self.parent_video.audio_codec.blank?
       # We have to use nero to encode the audio as ffmpeg doens't support HE-AAC yet
-      transcoder.execute(recipe_audio_extraction, recipe_options(self.parent_video.tmp_filepath, temp_audio_output_wav_file))
-      Merb.logger.info "Audio extraction done"
+      transcoder.execute(recipe_audio_extraction, recipe_options(self.parent_video.tmp_filepath(thread_id), temp_audio_output_wav_file))
+      Merb.logger.info "Thread(#{thread_id}): Audio extraction done"
 
       # Convert to HE-AAC
       %x(neroAacEnc -br #{self.audio_bitrate_in_bits} -he -if #{temp_audio_output_wav_file} -of #{temp_audio_output_file})
-      Merb.logger.info "Audio encoding done"
+      Merb.logger.info "Thread(#{thread_id}): Audio encoding done"
 
       # Squash the audio and video together
-      FileUtils.rm(self.tmp_filepath) if File.exists?(self.tmp_filepath) # rm, otherwise we end up with multiple video streams when we encode a few times!!
-      %x(MP4Box -add #{temp_video_output_file}#video #{self.tmp_filepath})
-      %x(MP4Box -add #{temp_audio_output_file}#audio #{self.tmp_filepath})
+      FileUtils.rm(self.tmp_filepath(thread_id)) if File.exists?(self.tmp_filepath(thread_id)) # rm, otherwise we end up with multiple video streams when we encode a few times!!
+      %x(MP4Box -add #{temp_video_output_file}#video #{self.tmp_filepath(thread_id)})
+      %x(MP4Box -add #{temp_audio_output_file}#audio #{self.tmp_filepath(thread_id)})
 
       # Interleave meta data
-      %x(MP4Box -inter 500 #{self.tmp_filepath})
-      Merb.logger.info "Squashing done"
+      %x(MP4Box -inter 500 #{self.tmp_filepath(thread_id)})
+      Merb.logger.info "Thread(#{thread_id}): Squashing done"
     else
-      Merb.logger.info "This video does't have an audio stream"
-      FileUtils.mv(temp_video_output_file, self.tmp_filepath)
+      Merb.logger.info "Thread(#{thread_id}): This video does't have an audio stream"
+      FileUtils.mv(temp_video_output_file, self.tmp_filepath(thread_id))
     end
   end
   
-  def encode_unknown_format
-    Merb.logger.info "Encoding with encode_unknown_format"
+  def encode_unknown_format(thread_id = "")
+    Merb.logger.info "Thread(#{thread_id}): Encoding with encode_unknown_format"
     transcoder = RVideo::Transcoder.new
     recipe = "ffmpeg -i $input_file$ -f $container$ -vcodec $video_codec$ -b $video_bitrate_in_bits$ -ar $audio_sample_rate$ -ab $audio_bitrate$k -acodec $audio_codec$ -r 24 $resolution_and_padding$ -y $output_file$"
-    Merb.logger.info "Unknown encoding format given but trying to encode anyway."
-    transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
+    Merb.logger.info "Thread(#{thread_id}): Unknown encoding format given but trying to encode anyway."
+    transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath(thread_id), self.tmp_filepath(thread_id)))
   end
   
   def encode(s3_lock = nil, thread_id = "")
@@ -636,16 +640,16 @@ RESPONSE
       self.save
       self.queue_notification
 
-      Merb.logger.info "Thread(#{thread_id}): Removing tmp video files (#{self.tmp_filepath} and #{parent_obj.tmp_filepath})"
-      FileUtils.rm self.tmp_filepath
-      FileUtils.rm parent_obj.tmp_filepath
+      Merb.logger.info "Thread(#{thread_id}): Removing tmp video files (#{self.tmp_filepath(thread_id)} and #{parent_obj.tmp_filepath(thread_id)})"
+      FileUtils.rm self.tmp_filepath(thread_id)
+      FileUtils.rm parent_obj.tmp_filepath(thread_id)
       
       Merb.logger.info "Encoding successful"
     rescue
       self.notification = 0
       self.status = "error"
       self.save
-      FileUtils.rm parent_obj.tmp_filepath
+      FileUtils.rm parent_obj.tmp_filepath(thread_id)
       
       Merb.logger.error "Thread(#{thread_id}): Unable to transcode file #{self.key}: #{$!.class} - #{$!.message}"
         

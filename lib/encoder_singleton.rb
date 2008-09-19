@@ -2,11 +2,16 @@ require 'thread'
 
 class EncoderSingleton
   @@job_count = 0
+  @@job_id = 1
   @@job_mutex = Mutex.new
   @@s3_mutex = Mutex.new
   
   def self.job_count
     @@job_count
+  end
+  
+  def self.job_id
+    @@job_id
   end
   
   def self.job_count=(amount)
@@ -15,6 +20,7 @@ class EncoderSingleton
   
   def self.inc_job_count
     @@job_count += 1
+    @@job_id += 1
   end
   
   def self.dec_job_count

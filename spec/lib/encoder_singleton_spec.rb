@@ -16,6 +16,12 @@ describe EncoderSingleton, "job counting" do
     EncoderSingleton.inc_job_count
     EncoderSingleton.job_count.should == 2
   end
+  
+  it "should increment the job id along with the job count" do
+    old = EncoderSingleton.job_id
+    EncoderSingleton.inc_job_count
+    EncoderSingleton.job_id.should == (old + 1)
+  end
 end
 
 describe EncoderSingleton, "job scheduling" do
@@ -166,7 +172,7 @@ describe EncoderSingleton, "job processing" do
   end
   
   it "should encode a video and then delete the job from the queue" do
-    @mocked_video_1.should_receive(:encode).once.with(EncoderSingleton.s3_mutex).ordered
+    @mocked_video_1.should_receive(:encode).once.with(EncoderSingleton.s3_mutex, 1234).ordered
     Video.should_receive(:delete_encoding_job).once.ordered.with(@job_hash_1[:receipt])
     
     EncoderSingleton.process_job(@job_hash_1, 1234)

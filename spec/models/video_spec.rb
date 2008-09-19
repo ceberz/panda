@@ -125,6 +125,7 @@ describe Video do
     
   it "tmp_filepath" do
     @video.tmp_filepath.should == '/tmp/abc.mov'
+    @video.tmp_filepath("1234").should == '/tmp/1234.abc.mov'
   end
 
   it "empty?" do
