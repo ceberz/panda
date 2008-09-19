@@ -45,6 +45,7 @@ describe EncodeQueue, "instantiation" do
   end
   
   it "should not try and create a new queue if a correctly named one exists" do
+    # debugger
     mocked_sqs = stub_everything("mocked sqs")
     mocked_sqs.stub!(:queue_url_by_name).and_return(['queue URI'])
     mocked_sqs.should_not_receive(:create_queue)

@@ -591,7 +591,7 @@ RESPONSE
     transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
   end
   
-  def encode
+  def encode(s3_lock = nil)
     raise "You can only encode encodings" unless self.encoding?
     self.status = "processing"
     self.save
@@ -603,7 +603,13 @@ RESPONSE
       parent_obj = self.parent_video
       Merb.logger.info "(#{Time.now.to_s}) Encoding #{self.key}"
     
-      parent_obj.fetch_from_s3
+      if s3_lock
+        s3_lock.synchronize do
+          parent_obj.fetch_from_s3
+        end
+      else
+        parent_obj.fetch_from_s3
+      end
 
       if self.container == "flv" and self.player == "flash"
         self.encode_flv_flash
@@ -613,8 +619,15 @@ RESPONSE
         self.encode_unknown_format
       end
       
-      self.upload_to_s3
-      self.capture_thumbnail_and_upload_to_s3
+      if s3_lock
+        s3_lock.synchronize do
+          self.upload_to_s3
+          self.capture_thumbnail_and_upload_to_s3
+        end
+      else
+        self.upload_to_s3
+        self.capture_thumbnail_and_upload_to_s3
+      end
       
       self.notification = 0
       self.status = "success"

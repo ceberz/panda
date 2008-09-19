@@ -409,6 +409,26 @@ describe Video do
   # ========
   
   # def ffmpeg_resolution_and_padding(inspector)
+  it "should only access s3 safely under a provided synchronization object" do
+    mocked_synchronizer = mock("mocked synchronizer")
+    mocked_synchronizer.stub!(:synchronize).and_yield.with_scope('s3 sync')
+    encoding = mock_encoding_flv_flash
+    encoding.stub!(:parent_video).and_return(@video)
+    encoding.stub!(:status=)
+    encoding.stub!(:save)
+    encoding.stub!(:encode_flv_flash)
+    encoding.stub!(:notification=)
+    encoding.stub!(:status=)
+    encoding.stub!(:encoded_at=)
+    encoding.stub!(:encoding_time=)
+    FileUtils.stub!(:rm)
+    
+    @video.should_receive(:fetch_from_s3).inside_scope('s3 sync')
+    encoding.should_receive(:upload_to_s3).inside_scope('s3 sync')
+    encoding.should_receive(:capture_thumbnail_and_upload_to_s3).inside_scope('s3 sync')
+  
+    encoding.encode(mocked_synchronizer)
+  end
   
   it "should constrain video and preserve aspect ratio (no cropping or pillarboxing) if a 4:3 video is encoded with a 16:9 profile" do
     parent_video = mock_video({:width => 640, :height => 480})

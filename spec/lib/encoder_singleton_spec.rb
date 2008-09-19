@@ -77,8 +77,8 @@ describe EncoderSingleton, "job scheduling" do
   it "should safely increment the job count for each new valid job" do
     Video.stub!(:next_job).and_return(@job_hashes)
     
-    EncoderSingleton.job_mutex.should_receive(:synchronize).twice.ordered.and_yield
-    EncoderSingleton.should_receive(:inc_job_count).twice.ordered
+    EncoderSingleton.job_mutex.stub!(:synchronize).and_yield.with_scope('job mutex')
+    EncoderSingleton.should_receive(:inc_job_count).twice.inside_scope('job mutex')
     Thread.stub!(:new)
     
     EncoderSingleton.schedule_jobs
@@ -107,14 +107,13 @@ describe EncoderSingleton, "job scheduling" do
     EncoderSingleton.schedule_jobs
   end
   
-  it "should increment the job count for jobs that have videos in the queued state" do
+  it "should only safely increment the job count for jobs that have videos in the queued state" do
     @mocked_video_1.stub!(:queued?).and_return(false)
-    @mocked_video_2.stub!(:queued?).and_return(false)
     
     Video.stub!(:next_job).and_return(@job_hashes)
 
-    EncoderSingleton.job_mutex.should_not_receive(:synchronize)
-    EncoderSingleton.should_not_receive(:inc_job_count)
+    EncoderSingleton.job_mutex.stub!(:synchronize).and_yield().with_scope('job mutex')
+    EncoderSingleton.should_receive(:inc_job_count).once.inside_scope('job mutex')
     Thread.stub!(:new)
     
     EncoderSingleton.schedule_jobs
@@ -167,7 +166,7 @@ describe EncoderSingleton, "job processing" do
   end
   
   it "should encode a video and then delete the job from the queue" do
-    @mocked_video_1.should_receive(:encode).once.ordered
+    @mocked_video_1.should_receive(:encode).once.with(EncoderSingleton.s3_mutex).ordered
     Video.should_receive(:delete_encoding_job).once.ordered.with(@job_hash_1[:receipt])
     
     EncoderSingleton.process_job(@job_hash_1, 1234)
@@ -203,8 +202,8 @@ describe EncoderSingleton, "job processing" do
     @mocked_video_1.stub!(:encode)
     Video.stub!(:delete_encoding_job)
     
-    EncoderSingleton.job_mutex.should_receive(:synchronize).once.ordered.and_yield
-    EncoderSingleton.should_receive(:dec_job_count).once.ordered
+    EncoderSingleton.job_mutex.stub!(:synchronize).and_yield().with_scope('job mutex')
+    EncoderSingleton.should_receive(:dec_job_count).once.inside_scope('job mutex')
     
     EncoderSingleton.process_job(@job_hash_1, 1234)
   end
@@ -213,8 +212,8 @@ describe EncoderSingleton, "job processing" do
     @mocked_video_1.stub!(:encode).and_raise(Exception)
     Video.stub!(:delete_encoding_job)
     
-    EncoderSingleton.job_mutex.should_receive(:synchronize).once.ordered.and_yield
-    EncoderSingleton.should_receive(:dec_job_count).once.ordered
+    EncoderSingleton.job_mutex.stub!(:synchronize).and_yield().with_scope('job mutex')
+    EncoderSingleton.should_receive(:dec_job_count).once.inside_scope('job mutex')
     
     EncoderSingleton.process_job(@job_hash_1, 1234)
   end
