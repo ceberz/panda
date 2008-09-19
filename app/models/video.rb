@@ -616,11 +616,11 @@ RESPONSE
       end
 
       if self.container == "flv" and self.player == "flash"
-        self.encode_flv_flash
+        self.encode_flv_flash(thread_id)
       elsif self.container == "mp4" and self.audio_codec == "aac" and self.player == "flash"
-        self.encode_mp4_aac_flash
+        self.encode_mp4_aac_flash(thread_id)
       else # Try straight ffmpeg encode
-        self.encode_unknown_format
+        self.encode_unknown_format(thread_id)
       end
       
       if s3_lock

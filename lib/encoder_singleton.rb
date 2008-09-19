@@ -44,10 +44,11 @@ class EncoderSingleton
     jobs.each do |job|
       Merb.logger.info "Evaluating encoding job from queue with ID #{job[:video].key}"
       if job[:video].queued?
+        proc_id = ""
         job_mutex.synchronize do
            EncoderSingleton.inc_job_count 
+           proc_id = EncoderSingleton.job_id
         end
-        proc_id = (Kernel.rand * 100000).floor
         Thread.new(job) do |job|
           EncoderSingleton.process_job(job, proc_id)
         end
