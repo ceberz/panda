@@ -59,7 +59,7 @@ class EncoderSingleton
       sleep 10
       video = job[:video]
       Merb.logger.info "Encoder Thread #{proc_id}: calling video.encode"
-      video.encode(s3_mutex)
+      video.encode(s3_mutex, proc_id)
     rescue Exception => e
       Merb.logger.info "Encoder Thread #{proc_id}: ERROR during encoding"
       begin
