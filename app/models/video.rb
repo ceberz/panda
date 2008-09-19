@@ -187,39 +187,39 @@ class Video < SimpleDB::Base
   # S3
   # ==
   
-  def upload_to_s3
+  def upload_to_s3(thread_id = "")
     begin
       retryable(:tries => 5) do
-        Merb.logger.info "Upload to S3"
+        Merb.logger.info "Thread(#{thread_id}): Upload to S3"
         S3VideoObject.store(self.filename, File.open(self.tmp_filepath), :access => :public_read)
         sleep 3
       end
     rescue
-      Merb.logger.error "Error uploading #{self.filename} to S3"
+      Merb.logger.error "Thread(#{thread_id}): Error uploading #{self.filename} to S3"
       raise
     else
       true
     end
   end
   
-  def fetch_from_s3
+  def fetch_from_s3(thread_id = "")
     begin
       retryable(:tries => 5) do
         File.open(self.tmp_filepath, 'w') do |file|
-          Merb.logger.info "Fetch from S3"
+          Merb.logger.info "Thread(#{thread_id}): Fetch from S3"
           S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
         end
         sleep 3
       end
     rescue
-      Merb.logger.error "Error fetching #{self.filename} from S3"
+      Merb.logger.error "Thread(#{thread_id}): Error fetching #{self.filename} from S3"
       raise
     else
       true
     end
   end
   
-  def delete_from_s3
+  def delete_from_s3(thread_id = "")
     begin
       retryable(:tries => 5) do
         Merb.logger.info "Deleting #{self.key} from S3"
@@ -234,7 +234,7 @@ class Video < SimpleDB::Base
     end
   end
   
-  def capture_thumbnail_and_upload_to_s3
+  def capture_thumbnail_and_upload_to_s3(thread_id = "")
     screenshot_tmp_filepath = self.tmp_filepath + ".jpg"
     thumbnail_tmp_filepath = self.tmp_filepath + "_thumb.jpg"
     
@@ -591,7 +591,7 @@ RESPONSE
     transcoder.execute(recipe, recipe_options(self.parent_video.tmp_filepath, self.tmp_filepath))
   end
   
-  def encode(s3_lock = nil)
+  def encode(s3_lock = nil, thread_id = "")
     raise "You can only encode encodings" unless self.encoding?
     self.status = "processing"
     self.save
@@ -601,11 +601,11 @@ RESPONSE
     begin
       encoding = self
       parent_obj = self.parent_video
-      Merb.logger.info "(#{Time.now.to_s}) Encoding #{self.key}"
+      Merb.logger.info "Thread(#{thread_id}): (#{Time.now.to_s}) Encoding #{self.key}"
     
       if s3_lock
         s3_lock.synchronize do
-          parent_obj.fetch_from_s3
+          parent_obj.fetch_from_s3(thread_id)
         end
       else
         parent_obj.fetch_from_s3
@@ -621,8 +621,8 @@ RESPONSE
       
       if s3_lock
         s3_lock.synchronize do
-          self.upload_to_s3
-          self.capture_thumbnail_and_upload_to_s3
+          self.upload_to_s3(thread_id)
+          self.capture_thumbnail_and_upload_to_s3(thread_id)
         end
       else
         self.upload_to_s3
@@ -636,7 +636,7 @@ RESPONSE
       self.save
       self.queue_notification
 
-      Merb.logger.info "Removing tmp video files"
+      Merb.logger.info "Thread(#{thread_id}): Removing tmp video files (#{self.tmp_filepath} and #{parent_obj.tmp_filepath})"
       FileUtils.rm self.tmp_filepath
       FileUtils.rm parent_obj.tmp_filepath
       
@@ -647,7 +647,7 @@ RESPONSE
       self.save
       FileUtils.rm parent_obj.tmp_filepath
       
-      Merb.logger.error "Unable to transcode file #{self.key}: #{$!.class} - #{$!.message}"
+      Merb.logger.error "Thread(#{thread_id}): Unable to transcode file #{self.key}: #{$!.class} - #{$!.message}"
         
       raise
     end
