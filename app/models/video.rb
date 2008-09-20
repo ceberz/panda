@@ -103,7 +103,7 @@ class Video < SimpleDB::Base
   # Location to store video file fetched from S3 for encoding
   def tmp_filepath(thread_id = "")
     unless thread_id == ""
-      Panda::Config[:tmp_video_dir] / "#{thread_id}.#{self.filename}"
+      Panda::Config[:tmp_video_dir] / "t#{thread_id}#{self.filename}"
     else
       Panda::Config[:tmp_video_dir] / self.filename
     end
