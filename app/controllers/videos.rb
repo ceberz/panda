@@ -116,6 +116,7 @@ class Videos < Application
       self.status = 500
       render_error("InternalServerError") # TODO: Use this generic error in production
     else
+      FileUtils.rm @video.tmp_filepath
       case content_type
       when :html  
         # Special internal Panda case: textarea hack to get around the fact that the form is submitted with a hidden iframe and thus the response is rendered in the iframe
@@ -124,7 +125,7 @@ class Videos < Application
         else
           redirect @video.upload_redirect_url
         end
-      end
+      end      
     end
   end
   

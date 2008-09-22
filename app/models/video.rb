@@ -260,6 +260,9 @@ class Video < SimpleDB::Base
       raise
     else
       true
+    ensure
+      FileUtils.rm screenshot_tmp_filepath
+      FileUtils.rm thumbnail_tmp_filepath
     end
   end
   
@@ -581,6 +584,10 @@ RESPONSE
       # Interleave meta data
       %x(MP4Box -inter 500 #{self.tmp_filepath(thread_id)})
       Merb.logger.info "Thread(#{thread_id}): Squashing done"
+      
+      FileUtils.rm(temp_video_output_file)
+      FileUtils.rm(temp_audio_output_file)
+      FileUtils.rm(temp_audio_output_wav_file)
     else
       Merb.logger.info "Thread(#{thread_id}): This video does't have an audio stream"
       FileUtils.mv(temp_video_output_file, self.tmp_filepath(thread_id))

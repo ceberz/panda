@@ -242,10 +242,13 @@ describe Video do
     GDResize.should_receive(:new).and_return(gd)
     
     File.should_receive(:open).with('/tmp/abc.mov.jpg').and_return(:fp)
-    S3VideoObject.should_receive(:store).with('abc.mov.jpg', :fp, :access => :public_read)
+    S3VideoObject.should_receive(:store).ordered.with('abc.mov.jpg', :fp, :access => :public_read)
     
     File.should_receive(:open).with('/tmp/abc.mov_thumb.jpg').and_return(:fp)
-    S3VideoObject.should_receive(:store).with('abc.mov_thumb.jpg', :fp, :access => :public_read)
+    S3VideoObject.should_receive(:store).ordered.with('abc.mov_thumb.jpg', :fp, :access => :public_read)
+    
+    FileUtils.should_receive(:rm).once.ordered.with('/tmp/abc.mov.jpg')
+    FileUtils.should_receive(:rm).once.ordered.with('/tmp/abc.mov_thumb.jpg')
     
     @video.capture_thumbnail_and_upload_to_s3.should be_true
   end
@@ -547,6 +550,9 @@ describe Video do
     # rm video file before we use MP4Box, otherwise we end up with multiple AV streams if the videos has been encoded more than once!
     File.should_receive(:exists?).with('/tmp/xyz.mp4').and_return(true)
     FileUtils.should_receive(:rm).with('/tmp/xyz.mp4')
+    FileUtils.should_receive(:rm).with('/tmp/xyz.mp4.temp.video.mp4')
+    FileUtils.should_receive(:rm).with('/tmp/xyz.mp4.temp.audio.mp4')
+    FileUtils.should_receive(:rm).with('/tmp/xyz.mp4.temp.audio.wav')
     
     encoding.encode_mp4_aac_flash
   end

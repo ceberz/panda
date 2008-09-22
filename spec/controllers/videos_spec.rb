@@ -110,6 +110,7 @@ describe Videos, "upload action" do
     @video.should_receive(:filename=).with("abc.avi")
     FileUtils.should_receive(:mv).with(an_instance_of(String), "/tmp/abc.avi")
     @video.should_receive(:original_filename=).with("video.avi")
+    FileUtils.stub!(:rm)
     
     # Next @video.process is called, this is where the interesting stuff happens, errors raised etc...
   end
@@ -197,4 +198,17 @@ describe Videos, "upload action" do
   #   post("/videos/123/uploaded.yaml")
   #   status.should == 404
   # end
+  
+  it "should delete the local copy of the video after upload to S3" do
+    setup_video
+    @video.should_receive(:process).ordered.and_return(true)
+    @video.should_receive(:status=).ordered.with("original")
+    @video.should_receive(:save).ordered
+    
+    FileUtils.should_receive(:rm).ordered.with(@video.tmp_filepath)   
+     
+    @c = multipart_post(@video_upload_url, @video_upload_params) do |controller|
+      controller.should_receive(:redirect).with("http://localhost:4000/videos/abc/done")
+    end
+  end
 end
