@@ -14,17 +14,17 @@ Bin is /usr/local/nginx/sbin/nginx
 Grab Panda
 ----------
 
-    cd /usr/local/www
+    cd /var/local/www
     git clone git://github.com/newbamboo/panda.git
-    mkdir /usr/local/www/panda/videos # Place for temp videos
-    mkdir /usr/local/www/panda/log
+    mkdir /var/local/www/panda/videos # Place for temp videos
+    mkdir /var/local/www/panda/log
 
 Configure Panda
 ---------------
 
 Copy the example config file and enter your AWS keys and other details.
 
-    cd /usr/local/www/panda/config
+    cd /var/local/www/panda/config
     cp panda_init.rb.example panda_init.rb
     vi panda_init.rb
 
@@ -87,18 +87,18 @@ Start Panda
 
 You can start Merb directly:
 
-    cd /usr/local/www/panda
+    cd /var/local/www/panda
     merb -p 4001
 
 The encoder can be run with 
 
-    cd /usr/local/www/panda
+    cd /var/local/www/panda
     merb -r lib/encoder.rb -p 5001 -e encoder
 
 Using God with the supplied config is the best method to control Merb and the encoder:
 
     god
-    god load /usr/local/www/panda/panda.god
+    god load /var/local/www/panda/panda.god
 
 Upload some videos!
 -------------------
