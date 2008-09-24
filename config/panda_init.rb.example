@@ -6,7 +6,7 @@ Panda::Config.use do |p|
   p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
   p[:state_update_url]       = "http://localhost:4000/videos/$id/status_update"
   p[:videos_domain]          = "" #eg: "s3.amazonaws.com/myvideosbucket", or fqdn like "videos.pandastream.com" if you've setup the CNAE record.
-  p[:tmp_video_dir]          = Merb.root / "videos"
+  p[:tmp_video_dir]          = "/var/tmp/videos"
   
   p[:access_key_id]          = "" # Your AWS Access Key
   p[:secret_access_key]      = "" # Your AWS Secret Access Key
