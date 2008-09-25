@@ -35,42 +35,6 @@ require File.join(File.dirname(__FILE__), '..', 'spec_helper.rb')
 #   end
 # end
 
-describe Videos, "jobs action" do
-  before(:each) do
-    @mocked_job_queue = stub_everything("mocked job queue")
-    JobQueue.should_receive(:new).once.and_return(@mocked_job_queue)
-    Video.stub!(:query)
-    EncoderSingleton.stub!(:job_count)
-  end
-  
-  it "should query the job queue for the number of jobs in the queue" do
-    pending
-    mocked_value = mock("mocked value")
-    @mocked_job_queue.should_receive(:num_jobs).once.and_return(mocked_value)
-    
-    get("/videos/jobs")
-    assigns(:num_jobs_in_queue).should == mocked_value
-  end
-  
-  it "should query the DB for the number of videos in the 'queued' state" do
-    pending
-    mocked_value = mock("mocked value")
-    Video.should_receive(:query).once.with("['status' = 'queued']").and_return(mocked_value)
-    
-    get("/videos/jobs")
-    assigns(:queued_in_db).should == mocked_value
-  end
-  
-  it "should check for the number of currently running encoder threads" do
-    pending
-    mocked_value = mock("mocked value")
-    EncoderSingleton.should_receive(:job_count).and_return(mocked_value)
-    
-    get("/videos/jobs")
-    assigns(:num_running_threads).should == mocked_value
-  end
-end
-
 describe Videos, "form action" do
   before(:each) do
     @video = Video.new
