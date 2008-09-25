@@ -3,10 +3,11 @@ require 'encoder_singleton'
 
 describe Dashboard, "index" do
   before(:each) do
+    @mock_queue = stub_everything("mock encode queue")
+    @mock_query_result = stub_everything("mock query result")
     Video.stub!(:recent_encodings)
     Video.stub!(:queued_encodings)
-    Video.stub!(:query)
-    @mock_queue = stub_everything("mock encode queue")
+    Video.stub!(:query).and_return(@mock_query_result)
     EncodeQueue.stub!(:new).and_return(@mock_queue)
     EncoderSingleton.stub!(:job_count)
   end
@@ -31,7 +32,9 @@ describe Dashboard, "index" do
   end
   
   it "should check the number of queued jobs in the DB, and the number of jobs being processed in this instance" do
-    Video.should_receive(:query).once.with("['status' = 'queued']")
+    Video.should_receive(:query).once.with("['status' = 'queued']").and_return(@mock_query_result)
+    @mock_query_result.should_receive(:size)
+    
     EncoderSingleton.should_receive(:job_count)
     
     dispatch_to(Dashboard, :index) do |controller| 

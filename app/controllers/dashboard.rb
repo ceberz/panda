@@ -7,7 +7,7 @@ class Dashboard < Application
     
     job_queue = EncodeQueue.new
     @num_jobs_in_queue = job_queue.num_jobs
-    @queued_in_qb = Video.query("['status' = 'queued']")
+    @queued_in_qb = Video.query("['status' = 'queued']").size
     @num_running_threads = EncoderSingleton.job_count
     render
   end
