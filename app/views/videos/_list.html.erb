@@ -13,13 +13,5 @@
 		<td><%= v.created_at.strftime("%a, %d %b %Y %H:%M:%S") rescue "" %></td>
 		<td></td>
 	</tr>
-	
-	<% v.encodings.each do |e| %>
-  	<tr>
-  		<td><a href="/videos/<%= e.key %>" class="filename"><%= e.profile_title %></a></td>
-  		<td></td>
-  		<td class="<%= e.status %>"><%= e.status %></td>
-  	</tr>
-  <% end %>
 <% end %>
 </table>
