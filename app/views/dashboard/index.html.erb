@@ -2,6 +2,8 @@
 	<div id="new_video">
 		<h2><a href="#" onclick="window.open('/videos/new', 'panda_upload', 'toolbar=0,scrollbars=0,location=0,statusbar=0,menubar=0,resizable=0,width=395,height=35');return false;">Upload a test video</a></h2>
 	</div>
+	<h2>Job Status</h2>
+	<p>There are currently <b><%=@num_jobs_in_queue%></b> jobs in the shared queue, and <b><%=@queued_in_qb%></b> videos in the DB in the queued state.  These numbers may not match at the moment of this page render.  This Panda instance is currently processing <b><%=@num_running_threads%></b> videos out of a max setting of <b><%=Panda::Config[:max_pull_down]%></b>  </p>
 
 	<h2>Encoding queue</h2>
 
