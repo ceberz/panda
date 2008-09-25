@@ -5,4 +5,3 @@ Merb::Config.use { |c|
   c[:log_level] = :info
   c[:log_file] = Merb.log_path + "/production.log"
 }
-require 'encoder_singleton'
