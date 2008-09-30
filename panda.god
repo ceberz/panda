@@ -51,6 +51,26 @@ God.watch do |w|
   end
 end
 
+God.watch do |w|
+  w.name = "notifier"
+  current_path  = "/var/local/www/panda"
+  port = 6001
+  w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/notifier.rb -d -p #{port} -e notifier'"
+  w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
+  w.pid_file = File.join(current_path, "log/merb.#{port}.pid")
+  w.behavior(:clean_pid_file)
+  w.start_grace = 10.seconds
+  w.restart_grace = 10.seconds
+  
+  w.start_if do |start|
+    start.condition(:process_running) do |c|
+      c.interval = 10.seconds
+      c.running = false
+      c.notify = 'admin'
+    end
+  end
+end
+
 God::Contacts::Email.message_settings = {
   :from => 'admin@localhost'
 }
