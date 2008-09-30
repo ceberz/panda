@@ -1,10 +1,14 @@
-require 'tlsmail' # gem install tlsmail
-Net::SMTP.enable_tls(OpenSSL::SSL::VERIFY_NONE)
+Merb::Mailer.delivery_method = :sendmail
 
-Merb::Mailer.config = {
-  :host   => 'smtp.gmail.com',
-  :port   => '587',
-  :user   => 'myname@gmail.com',
-  :pass   => 'mygmailpass',
-  :auth   => :plain
-}
+# If you would like to send email via gmail use this configuration:
+# 
+# require 'tlsmail' # gem install tlsmail
+# Net::SMTP.enable_tls(OpenSSL::SSL::VERIFY_NONE)
+# 
+# Merb::Mailer.config = {
+#   :host   => 'smtp.gmail.com',
+#   :port   => '587',
+#   :user   => 'myname@gmail.com',
+#   :pass   => 'mygmailpass',
+#   :auth   => :plain
+# }

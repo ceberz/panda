@@ -1,6 +1,6 @@
 God.watch do |w|
   w.name = "panda"
-  current_path  = "/usr/local/www/panda-alt/panda"
+  current_path  = "/var/local/www/panda"
   port = 4001
   w.start = "/bin/bash -c 'cd #{current_path}; merb -d -p #{port} -e production'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
@@ -33,7 +33,7 @@ end
 
 God.watch do |w|
   w.name = "encoder"
-  current_path  = "/usr/local/www/panda-alt/panda"
+  current_path  = "/var/local/www/panda"
   port = 4091
   w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/encoder.rb -d -p #{port} -e encoder'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
@@ -53,8 +53,8 @@ end
 
 God.watch do |w|
   w.name = "notifier"
-  current_path  = "/usr/local/www/panda-alt/panda"
-  port = 5091
+  current_path  = "/var/local/www/panda"
+  port = 6001
   w.start = "/bin/bash -c 'cd #{current_path}; merb -r lib/notifier.rb -d -p #{port} -e notifier'"
   w.stop = "/bin/bash -c 'cd #{current_path}; merb -k #{port}'"
   w.pid_file = File.join(current_path, "log/merb.#{port}.pid")
@@ -67,8 +67,8 @@ God.watch do |w|
       c.interval = 10.seconds
       c.running = false
       c.notify = 'admin'
-  	end
-	end
+    end
+  end
 end
 
 God::Contacts::Email.message_settings = {

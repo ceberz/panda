@@ -1,16 +1,16 @@
-require 'panda'
+ require 'panda'
 
 Panda::Config.use do |p|
   p[:account_name]           = "New Bamboo"
   p[:api_key]                = "f9e3425-16fd-012b-731d-001ec2b5c0e1"
   p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
   p[:state_update_url]       = "http://localhost:4000/videos/$id/status_update"
-  p[:videos_domain]          = "s3.amazonaws.com/myvideosbucket"
-  p[:tmp_video_dir]          = Merb.root / "videos"
+  p[:videos_domain]          = "" #eg: "s3.amazonaws.com/myvideosbucket", or fqdn like "videos.pandastream.com" if you've setup the CNAE record.
+  p[:tmp_video_dir]          = "/var/tmp/videos"
   
-  p[:access_key_id]          = ""
-  p[:secret_access_key]      = ""
-  p[:s3_videos_bucket]       = "myvideosbucket"
+  p[:access_key_id]          = "" # Your AWS Access Key
+  p[:secret_access_key]      = "" # Your AWS Secret Access Key
+  p[:s3_videos_bucket]       = "" # eg: "myvideosbucket",  or fqdn like "videos.pandastream.com" if you've setup the CNAE record.
   p[:sdb_videos_domain]      = "panda_videos"
   p[:sdb_users_domain]       = "panda_users"
   p[:sdb_profiles_domain]    = "panda_profiles"
@@ -19,6 +19,6 @@ Panda::Config.use do |p|
   
   p[:notification_retries] = 6 # How many times should a failed notification be retried?
   p[:notification_frequency] = 2 # How many
-  p[:notification_email]     = "me@mydomain.com" # Where notifications get sent to
-  p[:noreply_from]     = "no-reply@pandastream.com" # Where notifications come from
+  p[:notification_email]     = "" # Where notifications get sent to. eg: me@mydomain.com
+  p[:noreply_from]     = "" # Where notifications come from. eg: no-reply@pandastream.com
 end
