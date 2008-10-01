@@ -22,6 +22,8 @@ require "config" / "panda_init"
 
 dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda', 'gd_resize', 'map_to_hash', 'spec_eql_hash', 'error_sender'
 
+dependencies 'abstract_store', 's3_Store'
+
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
 require 'inline'
@@ -42,6 +44,8 @@ Merb::BootLoader.after_app_loads do
         self._default_builder.new(nil, nil, self)
     end
   end
+  
+  Store = S3Store.new
 end
 
 EMAIL_SENDER = "Panda <info@pandastream.com>"
