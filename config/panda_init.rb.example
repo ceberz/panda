@@ -5,8 +5,22 @@ Panda::Config.use do |p|
   p[:api_key]                = "f9e3425-16fd-012b-731d-001ec2b5c0e1"
   p[:upload_redirect_url]    = "http://localhost:4000/videos/$id/done"
   p[:state_update_url]       = "http://localhost:4000/videos/$id/status_update"
-  p[:videos_domain]          = "" #eg: "s3.amazonaws.com/myvideosbucket", or fqdn like "videos.pandastream.com" if you've setup the CNAE record.
+  
   p[:tmp_video_dir]          = "/var/tmp/videos"
+  
+  # ================================================
+  # Storage location for uploaded and encoded videos
+  # ================================================
+  
+  # For S3 storage:
+  p[:videos_store]          = :s3
+  # For example "s3.amazonaws.com/myvideosbucket" or a FQDN if configured
+  p[:videos_domain]          = ""
+  
+  # For local filesystem storage:
+  # p[:videos_store]          = :filesystem
+  # p[:videos_domain]         = "localhost:4000/store"
+  # p[:public_videos_dir]     = Merb.root / "public" / "store"
   
   p[:access_key_id]          = "" # Your AWS Access Key
   p[:secret_access_key]      = "" # Your AWS Secret Access Key

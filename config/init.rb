@@ -22,7 +22,7 @@ require "config" / "panda_init"
 
 dependencies 'merb-assets', 'merb-mailer', 'merb_helpers', 'uuid', 'to_simple_xml', 'rog', 'amazon_sdb', 'simple_db', 'retryable', 'activesupport', 'rvideo', 'panda', 'gd_resize', 'map_to_hash', 'spec_eql_hash', 'error_sender'
 
-dependencies 'abstract_store', 's3_Store'
+dependencies 'abstract_store', 's3_Store', 'file_store'
 
 # Not sure why dependencies won't load AWS::S3
 require 'aws/s3'
@@ -45,7 +45,14 @@ Merb::BootLoader.after_app_loads do
     end
   end
   
-  Store = S3Store.new
+  Store = case Panda::Config[:videos_store]
+  when :s3
+    S3Store.new
+  when :filesystem
+    FileStore.new
+  else
+    raise RuntimeError, "You have specified an invalid videos_store configuration option. Valid options are :s3 and :filesystem"
+  end
 end
 
 EMAIL_SENDER = "Panda <info@pandastream.com>"
