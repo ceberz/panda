@@ -65,6 +65,7 @@ class Video < SimpleDB::Base
   # Attr helpers
   # ============
   
+  # Delete an original video and all it's encodings.
   def obliterate!
     self.delete_from_s3
     self.encodings.each do |e|
