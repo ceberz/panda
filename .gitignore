@@ -12,3 +12,4 @@ videos/*
 config/mailer.rb
 config/panda_init_*.rb
 panda_all_staging_nginx.conf
+public/store

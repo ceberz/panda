@@ -18,6 +18,8 @@ describe Video do
     dummy_stub = stub_everything()
     NotifyQueue.stub!(:new).and_return(dummy_stub)
     EncodeQueue.stub!(:new).and_return(dummy_stub)
+    Store.stub!(:set).and_return(true)
+    Store.stub!(:delete).and_return(true)
   end
   
   # Classification
@@ -109,18 +111,30 @@ describe Video do
   # Attr helpers
   # ============
   
-  it "obliterate!" do
-    S3VideoObject.should_receive(:delete).with('abc.mov')
+  describe "obliterate!" do
+    before :each do
+      @encoding = Video.new
+      @encoding.filename = 'abc.flv'
+      
+      @video.should_receive(:encodings).and_return([@encoding])
+      
+      @video.stub!(:destroy!)
+      @encoding.stub!(:destroy!)
+    end
     
-    encoding = Video.new
-    encoding.filename = 'abc.flv'
-    S3VideoObject.should_receive(:delete).with('abc.flv')
-    encoding.should_receive(:destroy!)
+    it "should delete the original from the store and database" do
+      Store.should_receive(:delete).once.with('abc.mov')
+      @video.should_receive(:destroy!).once
+      
+      @video.obliterate!
+    end
     
-    @video.should_receive(:encodings).and_return([encoding])
-    @video.should_receive(:destroy!)
-    
-    @video.obliterate!
+    it "should delete all encodings from the store database" do
+      Store.should_receive(:delete).once.with('abc.flv')
+      @encoding.should_receive(:destroy!).once
+      
+      @video.obliterate!
+    end
   end
     
   it "tmp_filepath" do
@@ -197,40 +211,9 @@ describe Video do
     @video.embed_html.should == %(<embed src="http://videos.pandastream.com/flvplayer.swf" width="320" height="240" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=240&file=http://videos.pandastream.com/abc.flv&width=320&height=240&image=http://videos.pandastream.com/abc.flv.jpg" />)
   end
   
-  # S3
-  # ==
+  it "should upload_to_s3"
   
-  it "should upload_to_s3" do
-    File.should_receive(:open).with('/tmp/abc.mov').and_return(:fp)
-    S3VideoObject.should_receive(:store).with('abc.mov', :fp, :access => :public_read).and_return(true)
-    
-    @video.upload_to_s3.should be_true
-  end
-  
-  it "upload_to_s3 should retry uploading to S3 up to 6 times" do
-    File.should_receive(:open).exactly(6).times.with('/tmp/abc.mov').and_return(:fp)
-    S3VideoObject.should_receive(:store).with('abc.mov', :fp, :access => :public_read).exactly(6).times.and_raise(AWS::S3::S3Exception)
-    
-    lambda {@video.upload_to_s3}.should raise_error(AWS::S3::S3Exception)
-  end
-  
-  it "should fetch_from_s3" do
-    fp = mock(File)
-    fp.stub!(:write)
-    File.should_receive(:open).with('/tmp/abc.mov', 'w').and_yield(fp)
-    S3VideoObject.should_receive(:stream).with('abc.mov').and_yield('chunk')
-    
-    @video.fetch_from_s3.should be_true
-  end
-  
-  it "fetch_from_s3 should retry fetching from S3 up to 6 times" do
-    fp = mock(File)
-    fp.stub!(:write)
-    File.should_receive(:open).exactly(6).times.with('/tmp/abc.mov', 'w').and_yield(fp)
-    S3VideoObject.should_receive(:stream).exactly(6).with('abc.mov').and_raise(AWS::S3::S3Exception)
-    
-    lambda {@video.fetch_from_s3}.should raise_error(AWS::S3::S3Exception)
-  end
+  it "should fetch_from_s3"
   
   it "should capture_thumbnail_and_upload_to_s3" do
     inspector = mock(RVideo::Inspector)
@@ -241,14 +224,8 @@ describe Video do
     gd.should_receive(:resize).with('/tmp/abc.mov.jpg', '/tmp/abc.mov_thumb.jpg', [168,126]) # Dimensions based on thumbnail_height_constrain of 126
     GDResize.should_receive(:new).and_return(gd)
     
-    File.should_receive(:open).with('/tmp/abc.mov.jpg').and_return(:fp)
-    S3VideoObject.should_receive(:store).ordered.with('abc.mov.jpg', :fp, :access => :public_read)
-    
-    File.should_receive(:open).with('/tmp/abc.mov_thumb.jpg').and_return(:fp)
-    S3VideoObject.should_receive(:store).ordered.with('abc.mov_thumb.jpg', :fp, :access => :public_read)
-    
-    FileUtils.should_receive(:rm).once.ordered.with('/tmp/abc.mov.jpg')
-    FileUtils.should_receive(:rm).once.ordered.with('/tmp/abc.mov_thumb.jpg')
+    Store.should_receive(:set).with('abc.mov.jpg', '/tmp/abc.mov.jpg').and_return(true)
+    Store.should_receive(:set).with('abc.mov_thumb.jpg', '/tmp/abc.mov_thumb.jpg').and_return(true)
     
     @video.capture_thumbnail_and_upload_to_s3.should be_true
   end

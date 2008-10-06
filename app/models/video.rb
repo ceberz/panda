@@ -91,6 +91,7 @@ class Video < SimpleDB::Base
   # Attr helpers
   # ============
   
+  # Delete an original video and all it's encodings.
   def obliterate!
     self.delete_from_s3
     self.encodings.each do |e|
@@ -148,23 +149,23 @@ class Video < SimpleDB::Base
   end
   
   def screenshot_url
-    %(http://#{Panda::Config[:videos_domain]}/#{self.screenshot})
+    Store.url(self.screenshot)
   end
   
   def thumbnail_url
-    %(http://#{Panda::Config[:videos_domain]}/#{self.thumbnail})
+    Store.url(self.thumbnail)
   end
   
   # Encding attr helpers
   # ====================
   
   def url
-    %(http://#{Panda::Config[:videos_domain]}/#{self.filename})
+    Store.url(self.filename)
   end
   
   def embed_html
     return nil unless self.encoding?
-    %(<embed src="http://#{Panda::Config[:videos_domain]}/flvplayer.swf" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}&image=#{self.screenshot_url}" />)
+    %(<embed src="#{Store.url('flvplayer.swf')}" width="#{self.width}" height="#{self.height}" allowfullscreen="true" allowscriptaccess="always" flashvars="&displayheight=#{self.height}&file=#{self.url}&width=#{self.width}&height=#{self.height}&image=#{self.screenshot_url}" />)
   end
   
   def embed_js
@@ -183,7 +184,7 @@ class Video < SimpleDB::Base
       var params = {wmode:"transparent",allowfullscreen:"true"};
       var attributes = {};
       attributes.align = "top";
-      swfobject.embedSWF("http://#{Panda::Config[:videos_domain]}/player.swf", "flash_container_#{self.key[0..4]}", "#{self.width}", "#{self.height}", "9.0.115", "http://#{Panda::Config[:videos_domain]}/expressInstall.swf", flashvars, params, attributes);
+      swfobject.embedSWF("#{Store.url('player.swf')}", "flash_container_#{self.key[0..4]}", "#{self.width}", "#{self.height}", "9.0.115", "#{Store.url('expressInstall.swf')}", flashvars, params, attributes);
   	</script>
   	)
 	end
@@ -192,50 +193,18 @@ class Video < SimpleDB::Base
   # ==
   
   def upload_to_s3(thread_id = "")
-    begin
-      retryable(:tries => 5) do
-        Merb.logger.info "Thread(#{thread_id}): Upload to S3"
-        S3VideoObject.store(self.filename, File.open(self.tmp_filepath(thread_id)), :access => :public_read)
-        sleep 3
-      end
-    rescue
-      Merb.logger.error "Thread(#{thread_id}): Error uploading #{self.filename} to S3"
-      raise
-    else
-      true
-    end
+    Merb.logger.info "Thread(#{thread_id}): Upload to S3"
+    Store.set(self.filename, self.tmp_filepath(thread_id))
   end
   
   def fetch_from_s3(thread_id = "")
-    begin
-      retryable(:tries => 5) do
-        File.open(self.tmp_filepath(thread_id), 'w') do |file|
-          Merb.logger.info "Thread(#{thread_id}): Fetch from S3"
-          S3VideoObject.stream(self.filename) {|chunk| file.write chunk}
-        end
-        sleep 3
-      end
-    rescue
-      Merb.logger.error "Thread(#{thread_id}): Error fetching #{self.filename} from S3"
-      raise
-    else
-      true
-    end
+    Merb.logger.info "Thread(#{thread_id}): Fetch from S3"
+    Store.get(self.filename, self.tmp_filepath(thread_id))
   end
   
   def delete_from_s3(thread_id = "")
-    begin
-      retryable(:tries => 5) do
-        Merb.logger.info "Deleting #{self.key} from S3"
-        S3VideoObject.delete(self.filename)
-        sleep 3
-      end
-    rescue
-      Merb.logger.error "Error deleting #{self.filename} from S3"
-      raise
-    else
-      true
-    end
+    Merb.logger.info "Deleting #{self.key} from S3"
+    Store.delete(self.filename)
   end
   
   def capture_thumbnail_and_upload_to_s3(thread_id = "")
@@ -251,19 +220,8 @@ class Video < SimpleDB::Base
     
     GDResize.new.resize(screenshot_tmp_filepath, thumbnail_tmp_filepath, [width,height])
     
-    begin
-      retryable(:tries => 5) do
-        S3VideoObject.store(self.screenshot, File.open(screenshot_tmp_filepath), :access => :public_read)
-        S3VideoObject.store(self.thumbnail, File.open(thumbnail_tmp_filepath), :access => :public_read)
-      end
-    rescue
-      raise
-    else
-      true
-    ensure
-      FileUtils.rm screenshot_tmp_filepath
-      FileUtils.rm thumbnail_tmp_filepath
-    end
+    Store.set(self.screenshot, screenshot_tmp_filepath)
+    Store.set(self.thumbnail, thumbnail_tmp_filepath)
   end
   
   # Uploads
