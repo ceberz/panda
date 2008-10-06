@@ -65,7 +65,7 @@ describe S3Store do
   describe "url" do
     it "should convert the S3 key into a url" do
       @store.url('foo.mov').
-        should == "http://s3.amazonaws.com/myvideosbucket2/foo.mov"
+        should == "http://#{Panda::Config[:videos_domain]}/foo.mov"
     end
   end
   
