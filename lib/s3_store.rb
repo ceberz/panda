@@ -50,7 +50,7 @@ class S3Store < AbstractStore
     begin
       retryable(:tries => 5) do
         Merb.logger.info "Deleting #{key} from S3"
-        S3VideoObject.delete(self.filename)
+        S3VideoObject.delete(key)
         sleep 3
       end
     rescue
